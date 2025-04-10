@@ -3,7 +3,7 @@ import pandas as pd
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-
+import time 
 # Function to generate the custom dataset
 def generate_data():
     # Simulating a dataset with 10,000 rows
@@ -115,6 +115,14 @@ def show_page():
     user_query = st.text_input("Ask a question about the data:")
 
     if user_query:
+        st.info("Processing... Please wait.")
+        progress_bar = st.progress(0)
+        
+        # Simulate a task that takes 10 seconds
+        for i in range(1, 17):
+            # Update the progress bar incrementally
+            progress_bar.progress(i * 10)
+            time.sleep(1)
         # Generate the chatbot response based on the user's query
         response = chatbot_response(user_query, df)
         st.write(f"Chatbot Response: {response}")
