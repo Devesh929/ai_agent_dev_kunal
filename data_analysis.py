@@ -119,7 +119,7 @@ def show_page():
         progress_bar = st.progress(0)
         
         # Simulate a task that takes 10 seconds
-        for i in range(1, 17):
+        for i in range(1, 7):
             # Update the progress bar incrementally
             progress_bar.progress(i * 10)
             time.sleep(1)
