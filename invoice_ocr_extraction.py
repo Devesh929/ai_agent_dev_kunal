@@ -66,11 +66,11 @@ def show_page():
                     st.write("Date on Signature: 12-11-24")
                     st.markdown("""
                     ```
-                    ABB Motors and Mechanical Inc.
+                     Motors and Mechanical Inc.
         MASTER BILL #1407173106
         REPRINT
 
-        FROM ABB Motors and Mechanical Inc.
+        FROM  Motors and Mechanical Inc.
         AT ONE ELLIS DRIVE AUBURN NY 13021 US
 
         CARRIER | Prepaid-Do not change
@@ -120,7 +120,7 @@ def show_page():
         700 438 096
 
         TO EXPEDITE PAYMENT, MAIL A COPY OF THIS BILL OF LADING INCLUDING THE FREIGHT BILL TO THE FOLLOWING ADDRESS:
-        ABB Motors and Mechanical Inc.
+         Motors and Mechanical Inc.
         Freight Payment Dept
         P.O. Box 2400
         Fort Smith, AR 72902
@@ -130,11 +130,11 @@ def show_page():
                 if option== 2:
                     st.markdown("""
                 ```
-                ABB Motors and Mechanical Inc.
+                 Motors and Mechanical Inc.
                 MASTER BILL #1407173106
                 Original Master - Not Negotiable
                 FROM
-                ABB Motors and Mechanical Inc.
+                 Motors and Mechanical Inc.
                 AT
                 ONE ELLIS DRIVE AUBURN NY 13021 US
                 BY
@@ -182,15 +182,15 @@ def show_page():
                 ADVANCED:
                 $ If Charges are to be PREPAID, write or stamp here "PREPAID"
                 Prepaid-Do not change
-                Subject to section 7 of condition of applicable bill of lading if this shipment is to be delivered to the consignee without recourse on the consignor, the consignor shall sign the following statement: The carrier shall not make delivery of the shipment without payment of freight and other lawful charges. ABB Motors and Mechanical Inc.
+                Subject to section 7 of condition of applicable bill of lading if this shipment is to be delivered to the consignee without recourse on the consignor, the consignor shall sign the following statement: The carrier shall not make delivery of the shipment without payment of freight and other lawful charges.  Motors and Mechanical Inc.
                 (Signature of Consignor)
-                ABB Motors and Mechanical Inc.
+                 Motors and Mechanical Inc.
                 (Permanent post office address of shipper):
-                ABB Motors and Mechanical Inc.
+                 Motors and Mechanical Inc.
                 5711 S. BOREHAM, JR ST
                 FT. SMITH AR 72901
                 TO EXPEDITE PAYMENT, MAIL A CO OF THIS BILL OF LADING INCLUDING THE FREIGHT BILL TO THE FOLLOWING ADDRESS:
-                ABB Motors and Mechanical Inc.
+                 Motors and Mechanical Inc.
                 Freight Payment Dept
                 P.O. Box 2400
                 Fort Smith, AR 72902
@@ -199,7 +199,7 @@ def show_page():
                 if option== 3:
                         st.markdown("""
                     ```
-                ABB Motors and Bill of Lading Detail (REPRINT)
+                 Motors and Bill of Lading Detail (REPRINT)
 
         Mechanical Inc.
 
@@ -207,7 +207,7 @@ def show_page():
 
         CARRIER | A DUDE_EXLE INC
 
-        FROM ABB Motors and Mechanical Inc.
+        FROM  Motors and Mechanical Inc.
         AT ONE ELLIS DRIVE AUBURN NY 13021
 
         INLAND FRT TERMS | Prepaid-Do not change
@@ -302,7 +302,7 @@ def show_page():
                 if option== 4:
                     st.markdown("""
                 ```
-                ABB Motors and Bill of Lading Detail (REPRINT)
+                 Motors and Bill of Lading Detail (REPRINT)
 
         Mechanical Inc.
 
@@ -310,7 +310,7 @@ def show_page():
 
         CARRIER: A DUE PYLE CO.
 
-        FROM ABB Motors and Mechanical Inc.
+        FROM  Motors and Mechanical Inc.
         AT ONE ELLIS DRIVE AUBURN NY 13021
 
         INLAND FRT TERMS | Prepaid-Do not change
