@@ -5,7 +5,7 @@ import warnings
 # Suppress all warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 # Inject CSS to add background image to sidebar
-sidebar_bg_image_path = "blob:https://github.com/ed4c493c-1ce4-4fba-9cb6-91f009f59d6f"
+sidebar_bg_image_path = "https://github.com/Devesh929/ai_agent_dev_kunal/blob/main/Untitled%20design.png?raw=true"
 sidebar_style = f"""
     <style>
         [data-testid="stSidebarContent"] {{
