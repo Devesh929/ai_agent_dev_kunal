@@ -2,10 +2,25 @@ import pandas as pd
 import streamlit as st
 import numpy as np
 import pickle
+import requests
 
+# GitHub-hosted .pkl file URL
+url = "https://media.githubusercontent.com/media/rasmodev/Machine-Learning-Model-Deployment-on-Streamlit/refs/heads/main/rf_model.pkl"
+
+# Download the file content
+@st.cache_resource
+def load_model_from_url(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        return pickle.loads(response.content)
+    else:
+        st.error("Failed to load model from URL.")
+        return None
+
+# Load and display
+components = load_model_from_url(url)
 # Load the saved components:
-with open("https://media.githubusercontent.com/media/rasmodev/Machine-Learning-Model-Deployment-on-Streamlit/refs/heads/main/rf_model.pkl", "rb") as f:
-    components = pickle.load(f)
+
 def show_page():
 # Extract the individual components
     num_imputer = components["num_imputer"]
