@@ -36,7 +36,31 @@ def show_page():
 
     # Sidebar with input field descriptions
     
-
+    with st.expander("Dataset Desctiption"):
+        st.write("The predicted sales are:", predictions[0])
+        st.sidebar.header("Description of The Required Input Fields")
+        st.markdown("**Store Number**: The number of the store.")
+        st.markdown("**Product Family**: Product Family such as 'AUTOMOTIVE', 'BEAUTY', etc. "
+                            "Details:\n"
+                            " - **AUTOMOTIVE**: Products related to the automotive industry.\n"
+                            " - **BEAUTY**: Beauty and personal care products.\n"
+                            " - **CELEBRATION**: Products for celebrations and special occasions.\n"
+                            " - **CLEANING**: Cleaning and household maintenance products.\n"
+                            " - **CLOTHING**: Clothing and apparel items.\n"
+                            " - **FOODS**: Food items and groceries.\n"
+                            " - **GROCERY**: Grocery products.\n"
+                            " - **HARDWARE**: Hardware and tools.\n"
+                            " - **HOME**: Home improvement and decor products.\n"
+                            " - **LADIESWEAR**: Women's clothing.\n"
+                            " - **LAWN AND GARDEN**: Lawn and garden products.\n"
+                            " - **LIQUOR,WINE,BEER**: Alcoholic beverages.\n"
+                            " - **PET SUPPLIES**: Products for pets and animals.\n"
+                            " - **STATIONERY**: Stationery and office supplies.")
+        st.markdown("**Number of Items on Promotion**: Number of items on promotion within a particular shop.")
+        st.markdown("**City**: City where the store is located.")
+        st.markdown("**Cluster**: Cluster number which is a grouping of similar stores.")
+        st.markdown("**Transactions**: Number of transactions.")
+        st.markdown("**Crude Oil Price**: Daily Crude Oil Price.")
 
     # Create the input fields
     input_data = {}
@@ -61,7 +85,7 @@ def show_page():
         input_data['month'] = st.slider("Month",1,12)
         input_data['day'] = st.slider("Day",1,31)
         input_data['dayofweek'] = st.number_input("Day of Week (0=Sunday and 6=Satruday)",step=1)
-
+        
 
     # Create a button to make a prediction
     if st.button("Predict"):
@@ -111,27 +135,4 @@ def show_page():
         predictions = dt_model.predict(input_df_processed)
 
         # Display the predicted sales value to the user:
-        st.write("The predicted sales are:", predictions[0])
-        st.sidebar.header("Description of The Required Input Fields")
-        st.markdown("**Store Number**: The number of the store.")
-        st.markdown("**Product Family**: Product Family such as 'AUTOMOTIVE', 'BEAUTY', etc. "
-                            "Details:\n"
-                            " - **AUTOMOTIVE**: Products related to the automotive industry.\n"
-                            " - **BEAUTY**: Beauty and personal care products.\n"
-                            " - **CELEBRATION**: Products for celebrations and special occasions.\n"
-                            " - **CLEANING**: Cleaning and household maintenance products.\n"
-                            " - **CLOTHING**: Clothing and apparel items.\n"
-                            " - **FOODS**: Food items and groceries.\n"
-                            " - **GROCERY**: Grocery products.\n"
-                            " - **HARDWARE**: Hardware and tools.\n"
-                            " - **HOME**: Home improvement and decor products.\n"
-                            " - **LADIESWEAR**: Women's clothing.\n"
-                            " - **LAWN AND GARDEN**: Lawn and garden products.\n"
-                            " - **LIQUOR,WINE,BEER**: Alcoholic beverages.\n"
-                            " - **PET SUPPLIES**: Products for pets and animals.\n"
-                            " - **STATIONERY**: Stationery and office supplies.")
-        st.markdown("**Number of Items on Promotion**: Number of items on promotion within a particular shop.")
-        st.markdown("**City**: City where the store is located.")
-        st.markdown("**Cluster**: Cluster number which is a grouping of similar stores.")
-        st.markdown("**Transactions**: Number of transactions.")
-        st.markdown("**Crude Oil Price**: Daily Crude Oil Price.")
+        
