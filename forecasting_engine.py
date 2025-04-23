@@ -37,7 +37,7 @@ def show_page():
     # Sidebar with input field descriptions
     
     with st.expander("Dataset Desctiption"):
-        st.write("The predicted sales are:", predictions[0])
+        
         st.sidebar.header("Description of The Required Input Fields")
         st.markdown("**Store Number**: The number of the store.")
         st.markdown("**Product Family**: Product Family such as 'AUTOMOTIVE', 'BEAUTY', etc. "
@@ -135,4 +135,4 @@ def show_page():
         predictions = dt_model.predict(input_df_processed)
 
         # Display the predicted sales value to the user:
-        
+        st.write("The predicted sales are:", predictions[0])
