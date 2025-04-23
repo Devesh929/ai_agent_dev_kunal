@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 
 # Load the saved components:
-with open("rf_model.pkl", "rb") as f:
+with open("https://media.githubusercontent.com/media/rasmodev/Machine-Learning-Model-Deployment-on-Streamlit/refs/heads/main/rf_model.pkl", "rb") as f:
     components = pickle.load(f)
 def show_page():
 # Extract the individual components
