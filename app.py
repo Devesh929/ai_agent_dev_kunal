@@ -5,7 +5,7 @@ import warnings
 # Suppress all warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 # Inject CSS to add background image to sidebar
-sidebar_bg_image_path = "https://i.pinimg.com/474x/26/83/de/2683de7b2db6a90ca89c810e40ca98d2.jpg"
+sidebar_bg_image_path = "https://brandemic.in/wp-content/uploads/2023/11/PaperBoat4.webp"
 sidebar_style = f"""
     <style>
         [data-testid="stSidebarContent"] {{
