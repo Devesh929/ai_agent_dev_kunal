@@ -5,8 +5,7 @@ import warnings
 # Suppress all warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 # Inject CSS to add background image to sidebar
-sidebar_bg_image_path = "https://img.freepik.com/free-vector/realistic-background-futuristic-style_23-2149129125.jpg?ga=GA1.1.135601953.1744344240&semt=ais_hybrid&w=740"  # Replace this with your actual image path or URL
-
+sidebar_bg_image_path = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT8mpIZ1wQ0Hb7HYG2B9rS11DkH4uvkwK6QeA&s"
 sidebar_style = f"""
     <style>
         [data-testid="stSidebarContent"] {{
