@@ -5,7 +5,7 @@ import warnings
 # Suppress all warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 # Inject CSS to add background image to sidebar
-sidebar_bg_image_path = "https://wp.sfdcdigital.com/en-us/wp-content/uploads/sites/4/2024/10/AI-customer-service-agents-1680x1120-1.jpg?w=1024"
+sidebar_bg_image_path = "https://www.salesforce.com/eu/blog/wp-content/uploads/sites/14/2024/08/TSK-36969_AI_Agents_The_Future_of_Business_Applications.jpg"
 sidebar_style = f"""
     <style>
         [data-testid="stSidebarContent"] {{
