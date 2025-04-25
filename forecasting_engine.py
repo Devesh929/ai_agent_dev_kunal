@@ -33,7 +33,7 @@ def show_page():
     st.title("Sales Prediction App")
 
     st.caption("This app predicts sales patterns of Corporation EAST WEST SEED over time in different stores in Ecuador based on the inputs.")
-
+    st.caption("DUMMY DATA")
     # Sidebar with input field descriptions
     
     with st.expander("Dataset Desctiption"):
