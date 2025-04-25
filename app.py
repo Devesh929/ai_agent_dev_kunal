@@ -5,7 +5,7 @@ import warnings
 # Suppress all warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 # Inject CSS to add background image to sidebar
-sidebar_bg_image_path = "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=1080/app/videos/products/thumbnail/130163a.jpg?ts=1713178795"
+sidebar_bg_image_path = "https://wp.sfdcdigital.com/en-us/wp-content/uploads/sites/4/2024/10/AI-customer-service-agents-1680x1120-1.jpg?w=1024"
 sidebar_style = f"""
     <style>
         [data-testid="stSidebarContent"] {{
