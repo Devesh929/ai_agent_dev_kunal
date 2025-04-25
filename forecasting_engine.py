@@ -32,7 +32,7 @@ def show_page():
     st.image("https://img-cdn.krishijagran.com/101485/east-west-seed-international.jpg")
     st.title("Sales Prediction App")
 
-    st.caption("This app predicts sales patterns of Corporation Favorita over time in different stores in Ecuador based on the inputs.")
+    st.caption("This app predicts sales patterns of Corporation EAST WEST SEED over time in different stores in Ecuador based on the inputs.")
 
     # Sidebar with input field descriptions
     
