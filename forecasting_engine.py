@@ -29,7 +29,7 @@ def show_page():
     scaler = components["scaler"]
     dt_model = components["models"]
 
-    st.image("https://pbs.twimg.com/media/DywhyJiXgAIUZej?format=jpg&name=medium")
+    st.image("https://img-cdn.krishijagran.com/101485/east-west-seed-international.jpg")
     st.title("Sales Prediction App")
 
     st.caption("This app predicts sales patterns of Corporation Favorita over time in different stores in Ecuador based on the inputs.")
