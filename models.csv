@@ -1,0 +1,3 @@
+model_id,task
+aws/amazon.titan-text-express-v1,/chat/completions
+aws/amazon.titan-embed-text-v1,/embeddings
