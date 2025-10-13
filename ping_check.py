@@ -9,10 +9,9 @@ from typing import Tuple
 BASE_URL = "https://dh1-genwizardllm.accenture.com/testsrivarshan1/llm"
 
 # Read your bearer from env var (recommended). Falls back to the hardcoded token ONLY if present.
-TOKEN = os.getenv("GW_BEARER", "REPLACE_ME_WITH_ENV_VAR_GW_BEARER")
-
+TOKEN = os.getenv("GW_BEARER", "")
 # Files
-INPUT_CSV = "models_tasks.csv"    # <-- put your CSV here
+INPUT_CSV = "models.csv"    # <-- put your CSV here
 OUTPUT_CSV = "results.csv"
 
 # Common request settings
