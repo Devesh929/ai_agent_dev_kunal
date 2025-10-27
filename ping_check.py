@@ -1,238 +1,228 @@
-import os
-import csv
-import json
-import requests
-from typing import Tuple, Dict, List
-from pathlib import Path
+# Blender 3.x
+import bpy
+import math
+from mathutils import Vector, Matrix
 
-# ==== CONFIG ====
-BASE_URL = "https://dh1-genwizardllm.accenture.com/testsrivarshan1/llm"
-TOKEN = os.getenv("GW_BEARER", "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6IkhTMj")
+# -----------------------
+# helpers & housekeeping
+# -----------------------
+def reset_scene():
+    bpy.ops.object.select_all(action='SELECT')
+    bpy.ops.object.delete(use_global=False)
+    for datablock in (bpy.data.meshes, bpy.data.materials, bpy.data.curves):
+        for b in list(datablock):
+            if not b.users:
+                datablock.remove(b)
 
-# Prefer models_tasks.csv; fall back to models.csv if present
-DEFAULT_INPUTS = ["models.csv"]
-OUTPUT_CSV = "results.csv"
+def make_collection(name="Helicopter"):
+    col = bpy.data.collections.new(name)
+    bpy.context.scene.collection.children.link(col)
+    return col
 
-HEADERS = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {TOKEN}",
-}
-TIMEOUT = 30
+def add_emission_mat(name="WireYellow", color=(1.0, 0.9, 0.1, 1.0), strength=3.5):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+    out = nodes.new("ShaderNodeOutputMaterial")
+    emi = nodes.new("ShaderNodeEmission")
+    emi.inputs["Color"].default_value = color
+    emi.inputs["Strength"].default_value = strength
+    links.new(emi.outputs["Emission"], out.inputs["Surface"])
+    return mat
 
+def add_wireframe_modifier(obj, thickness=0.02):
+    mod = obj.modifiers.new(name="Wireframe", type="WIREFRAME")
+    mod.thickness = thickness
+    mod.use_boundary = True
+    mod.use_replace = True
 
-# ==== HELPERS ====
+def cube_like(name, size=(1,1,1), location=(0,0,0)):
+    bpy.ops.mesh.primitive_cube_add(location=location)
+    o = bpy.context.active_object
+    o.name = name
+    o.scale = Vector(size)/2.0
+    return o
 
-def clean_path(task: str) -> str:
-    task = (task or "").strip()
-    if not task.startswith("/"):
-        task = "/" + task
-    return task
+def cylinder(name, radius=1, depth=2, location=(0,0,0), rotation=(0,0,0)):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, location=location, rotation=rotation)
+    o = bpy.context.active_object
+    o.name = name
+    return o
 
-def build_url(path: str, model_id: str) -> str:
-    return f"{BASE_URL}{path}?model_id={model_id}"
+def sphere(name, radius=1, location=(0,0,0)):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=location, segments=48, ring_count=24)
+    o = bpy.context.active_object
+    o.name = name
+    return o
 
-def make_payload(path: str) -> dict:
-    if path == "/chat/completions":
-        return {"messages": [{"role": "user", "content": "What is computing? one sentence"}]}
-    elif path == "/embeddings":
-        return {"input": "Hello world"}
-    else:
-        return {"input": "health-check"}
+def set_parent(child, parent):
+    child.parent = parent
+    child.matrix_parent_inverse = parent.matrix_world.inverted()
 
-def extract_response_text(path: str, data: dict) -> str:
-    try:
-        if path == "/chat/completions":
-            choices = data.get("choices") or []
-            if choices:
-                msg = choices[0].get("message") or {}
-                content = msg.get("content")
-                if content:
-                    return content
-        elif path == "/embeddings":
-            arr = data.get("data") or []
-            if arr and isinstance(arr, list):
-                emb = arr[0].get("embedding")
-                if isinstance(emb, list):
-                    return f"embedding_length={len(emb)}"
-        txt = json.dumps(data, separators=(",", ":"))
-        return txt if len(txt) <= 2000 else txt[:2000] + " ...[truncated]"
-    except Exception:
-        txt = json.dumps(data, separators=(",", ":"))
-        return txt if len(txt) <= 2000 else txt[:2000] + " ...[truncated]"
+# -----------------------
+# build helicopter parts
+# -----------------------
+reset_scene()
+col = make_collection()
+mat_wire = add_emission_mat()
 
-def call_row(model_id: str, task: str) -> Tuple[str, bool]:
-    path = clean_path(task)
-    url = build_url(path, model_id)
-    payload = make_payload(path)
-    print(f"[DEBUG] CALLING -> url={url} payload={json.dumps(payload)}")
-    try:
-        resp = requests.post(url, headers=HEADERS, json=payload, timeout=TIMEOUT, verify=False)
-        resp.raise_for_status()
-        data = resp.json()
-        return extract_response_text(path, data), True
-    except requests.HTTPError as e:
-        body = getattr(e.response, "text", "")
-        return f"HTTP {e.response.status_code if e.response else ''}: {body}", False
-    except requests.RequestException as e:
-        return f"REQUEST_ERROR: {str(e)}", False
-    except Exception as e:
-        return f"UNEXPECTED_ERROR: {str(e)}", False
+# World & render look
+scene = bpy.context.scene
+scene.render.engine = "BLENDER_EEVEE"
+scene.eevee.use_bloom = True
+bpy.data.worlds["World"].use_nodes = True
+bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = (0.02, 0.02, 0.03, 1.0)
+bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[1].default_value = 0.8
 
-def normalize(s: str) -> str:
-    # strip spaces + BOM, lower, replace inner spaces with underscore
-    return (s or "").lstrip("\ufeff").strip().lower().replace(" ", "_")
+# Root empty to keep things tidy
+root = bpy.data.objects.new("HELI_ROOT", None)
+col.objects.link(root)
 
-def detect_header_mapping(fieldnames: List[str]) -> Dict[str, str]:
-    """
-    Map canonical keys -> actual keys in the file.
-    canonical: model_id, task
-    accepts synonyms and BOM variants.
-    """
-    norm_to_actual = {normalize(fn): fn for fn in fieldnames}
-    mapping = {}
+# Fuselage (stretched sphere)
+fuselage = sphere("Fuselage", radius=1.0, location=(0,0,0.9))
+fuselage.scale = (2.2, 0.95, 1.0)   # length, width, height
+col.objects.link(fuselage)
+add_wireframe_modifier(fuselage, 0.015)
+fuselage.data.materials.append(mat_wire)
+set_parent(fuselage, root)
 
-    # model_id synonyms
-    for candidate in ["model_id", "model", "modelname", "model_name", "id"]:
-        if candidate in norm_to_actual:
-            mapping["model_id"] = norm_to_actual[candidate]
-            break
+# Nose bubble
+cockpit = sphere("Cockpit", radius=0.8, location=(1.6, 0, 0.9))
+cockpit.scale = (0.9, 0.95, 0.9)
+col.objects.link(cockpit)
+add_wireframe_modifier(cockpit, 0.015)
+cockpit.data.materials.append(mat_wire)
+set_parent(cockpit, root)
 
-    # task/endpoint/path synonyms
-    for candidate in ["task", "endpoint", "path", "api", "route"]:
-        if candidate in norm_to_actual:
-            mapping["task"] = norm_to_actual[candidate]
-            break
+# Tail boom
+tail = cylinder("TailBoom", radius=0.12, depth=4.2, location=(-3.0/2, 0, 1.0), rotation=(0, math.radians(90), 0))
+tail.location.x = -1.3
+col.objects.link(tail)
+add_wireframe_modifier(tail, 0.012)
+tail.data.materials.append(mat_wire)
+set_parent(tail, root)
 
-    return mapping
+# Tail fin & tail rotor mast
+fin = cube_like("TailFin", size=(0.08, 0.65, 1.0), location=(-3.3, 0, 1.2))
+col.objects.link(fin)
+add_wireframe_modifier(fin, 0.01)
+fin.data.materials.append(mat_wire)
+set_parent(fin, root)
 
-def choose_input_file() -> str:
-    env_file = os.getenv("GW_INPUT_CSV")
-    candidates = [env_file] if env_file else []
-    candidates += DEFAULT_INPUTS
-    for c in candidates:
-        if c and Path(c).is_file():
-            return c
-    # fall back to the first default even if missing, for a clear error later
-    return candidates[0] if candidates else DEFAULT_INPUTS[0]
+tail_mast = cylinder("TailRotorMast", radius=0.05, depth=0.5,
+                     location=(-3.3, 0.35, 1.2), rotation=(math.radians(90), 0, 0))
+col.objects.link(tail_mast)
+add_wireframe_modifier(tail_mast, 0.01)
+tail_mast.data.materials.append(mat_wire)
+set_parent(tail_mast, root)
 
-def print_csv_preview(path: str, limit: int = 200) -> None:
-    print(f"\n===== CSV PREVIEW ({path}) =====")
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            for i, line in enumerate(f, start=1):
-                ln = line.rstrip("\n")
-                print(f"{i:04d}: {ln}")
-                if i >= limit:
-                    print(f"... (truncated preview at {limit} lines)")
-                    break
-    except UnicodeDecodeError:
-        # try fallback encoding
-        with open(path, "r", encoding="utf-8-sig") as f:
-            for i, line in enumerate(f, start=1):
-                ln = line.rstrip("\n")
-                print(f"{i:04d}: {ln}")
-                if i >= limit:
-                    print(f"... (truncated preview at {limit} lines)")
-                    break
-    print("===== END PREVIEW =====\n")
+# Tail rotor (2 blades)
+hub_t = cylinder("TailHub", radius=0.05, depth=0.12, location=(-3.3, 0.35, 1.2), rotation=(math.radians(90), 0, 0))
+col.objects.link(hub_t)
+add_wireframe_modifier(hub_t, 0.012)
+hub_t.data.materials.append(mat_wire)
+set_parent(hub_t, root)
 
-# ==== MAIN ====
+for i in range(2):
+    blade = cube_like(f"TailBlade_{i+1}", size=(0.06, 0.9, 0.12), location=(-3.3, 0.80, 1.2))
+    blade.rotation_euler = (0, 0, math.radians(90*i))
+    col.objects.link(blade)
+    add_wireframe_modifier(blade, 0.01)
+    blade.data.materials.append(mat_wire)
+    set_parent(blade, hub_t)
 
-def main():
-    if not TOKEN or TOKEN == "REPLACE_ME_WITH_ENV_VAR_GW_BEARER":
-        print("[WARN] No token in GW_BEARER. Set it via environment variable for real calls.")
+# Main rotor mast & hub
+mast = cylinder("MainMast", radius=0.08, depth=0.8, location=(0,0,2.0), rotation=(math.radians(90), 0, 0))
+col.objects.link(mast)
+add_wireframe_modifier(mast, 0.012)
+mast.data.materials.append(mat_wire)
+set_parent(mast, root)
 
-    input_csv = choose_input_file()
-    print(f"[INFO] Using input CSV: {input_csv}")
-    if not Path(input_csv).is_file():
-        print(f"[ERROR] File not found: {input_csv}")
-        return
+hub = cylinder("MainHub", radius=0.15, depth=0.2, location=(0,0,2.4), rotation=(0,0,0))
+col.objects.link(hub)
+add_wireframe_modifier(hub, 0.012)
+hub.data.materials.append(mat_wire)
+set_parent(hub, mast)
 
-    print_csv_preview(input_csv, limit=200)
+# Main rotor blades (4)
+blade_length = 4.8
+blade_width  = 0.28
+blade_thick  = 0.06
+for i in range(4):
+    angle = math.radians(i * 90)
+    blade = cube_like(f"MainBlade_{i+1}", size=(blade_length, blade_width, blade_thick), location=(0,0,2.4))
+    # move blade so hub connects at root
+    blade.location += Vector((blade_length/4, 0, 0))
+    blade.rotation_euler = (math.radians(4), 0, angle)
+    col.objects.link(blade)
+    add_wireframe_modifier(blade, 0.01)
+    blade.data.materials.append(mat_wire)
+    set_parent(blade, hub)
 
-    rows_read = 0
-    attempted = 0
-    failures = 0
-    skipped = 0
-    skip_reasons = {}
+# Landing skids (two rails + four struts)
+rail_dist_y = 0.8
+rail_z = 0.15
+rail_len = 3.3
+rail_r = 0.06
 
-    rows_out = []
+for sgn in (-1, 1):
+    rail = cylinder(f"Skid_{'L' if sgn<0 else 'R'}", radius=rail_r, depth=rail_len,
+                    location=(0, sgn*rail_dist_y, rail_z), rotation=(0, math.radians(90), 0))
+    col.objects.link(rail)
+    add_wireframe_modifier(rail, 0.01)
+    rail.data.materials.append(mat_wire)
+    set_parent(rail, root)
 
-    # Read input with DictReader and show actual fieldnames
-    with open(input_csv, newline="", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        fieldnames = reader.fieldnames or []
-        print(f"[INFO] Detected headers: {fieldnames}")
+# struts
+def strut(x, y, z_top, z_bot, name):
+    h = abs(z_top - z_bot)
+    c = cylinder(name, radius=0.05, depth=h, location=(x, y, (z_top+z_bot)/2),
+                 rotation=(math.radians(20 if y>0 else -20), 0, 0))
+    col.objects.link(c)
+    add_wireframe_modifier(c, 0.01)
+    c.data.materials.append(mat_wire)
+    set_parent(c, root)
 
-        mapping = detect_header_mapping(fieldnames)
-        print(f"[INFO] Header mapping resolved to: {mapping}")
+for x in (-1.2, 1.2):
+    for y in (-rail_dist_y, rail_dist_y):
+        strut(x, y, 0.7, rail_z, f"Strut_{'F' if x<0 else 'B'}_{'L' if y<0 else 'R'}")
 
-        if "model_id" not in mapping or "task" not in mapping:
-            print("[ERROR] Could not find required columns. Need headers for model_id and task (synonyms accepted).")
-            print("[HINT] Present headers: ", fieldnames)
-            return
+# Small engine / intake hint on top
+engine = sphere("EnginePod", radius=0.5, location=(0.2, 0, 1.6))
+engine.scale = (1.2, 0.7, 0.7)
+col.objects.link(engine)
+add_wireframe_modifier(engine, 0.012)
+engine.data.materials.append(mat_wire)
+set_parent(engine, root)
 
-        model_key = mapping["model_id"]
-        task_key = mapping["task"]
+# Give all objects the material if they somehow missed it
+for o in col.objects:
+    if getattr(o.data, "materials", None) and not o.data.materials:
+        o.data.materials.append(mat_wire)
 
-        for line_no, row in enumerate(reader, start=2):  # start=2 accounts for header line at 1
-            rows_read += 1
-            # Log the raw row
-            print(f"[DEBUG] Row {line_no} raw: {row}")
+# Camera
+cam_data = bpy.data.cameras.new("Camera")
+cam = bpy.data.objects.new("Camera", cam_data)
+col.objects.link(cam)
+scene.camera = cam
+cam.location = (7.0, -7.5, 4.0)
+# point at origin
+direction = Vector((0,0,1.2)) - cam.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+cam.rotation_euler = rot_quat.to_euler()
 
-            # Extract and trim
-            model_id = (row.get(model_key) or "").strip()
-            task = (row.get(task_key) or "").strip()
+# Light (not strictly needed for emission, but useful)
+bpy.ops.object.light_add(type='AREA', location=(3, -3, 6))
+light = bpy.context.active_object
+light.data.energy = 200
 
-            # Validate row
-            reasons = []
-            if not model_id:
-                reasons.append("empty model_id")
-            if not task:
-                reasons.append("empty task")
-
-            # Optional: treat lines with all empty values as blank rows
-            if not any((v or "").strip() for v in row.values()):
-                reasons.append("blank_line")
-
-            if reasons:
-                skipped += 1
-                reason_key = ";".join(sorted(reasons))
-                skip_reasons[reason_key] = skip_reasons.get(reason_key, 0) + 1
-                print(f"[SKIP] Row {line_no} skipped -> {reason_key}")
-                continue
-
-            attempted += 1
-            path = clean_path(task)
-            print(f"[INFO] Row {line_no} attempting -> model_id='{model_id}' path='{path}'")
-            resp_text, ok = call_row(model_id, task)
-            if not ok:
-                failures += 1
-                print(f"[FAIL] Row {line_no} request failed")
-
-            rows_out.append({
-                "model_id": model_id,
-                "path": path,
-                "response": resp_text
-            })
-
-    # Write output
-    with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["model_id", "path", "response"])
-        writer.writeheader()
-        writer.writerows(rows_out)
-
-    print("\n===== RUN SUMMARY =====")
-    print(f"Rows read:       {rows_read}")
-    print(f"Total attempted: {attempted}")
-    print(f"Total failed:    {failures}")
-    print(f"Total skipped:   {skipped}")
-    if skip_reasons:
-        print("Skip reasons:")
-        for k, v in skip_reasons.items():
-            print(f"  - {k}: {v}")
-    print(f"Wrote results to: {OUTPUT_CSV}")
-    print("===== END SUMMARY =====")
-
-if __name__ == "__main__":
-    main()
+# Nice viewport: show as wire + glowing lines
+for area in bpy.context.screen.areas:
+    if area.type == 'VIEW_3D':
+        for space in area.spaces:
+            if space.type == 'VIEW_3D':
+                space.shading.type = 'RENDERED'
+                space.shading.use_scene_lights = True
+                space.shading.use_scene_world = True
