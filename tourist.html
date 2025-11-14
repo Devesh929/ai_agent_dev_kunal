@@ -1,0 +1,1984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Incredible India Planner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg-dark: #050816;
+      --bg-card: rgba(10, 14, 40, 0.95);
+      --bg-soft: rgba(15, 23, 42, 0.85);
+      --accent: #f97316;
+      --accent-soft: rgba(249, 115, 22, 0.18);
+      --accent-strong: #fb923c;
+      --text-main: #e5e7eb;
+      --text-muted: #94a3b8;
+      --border-subtle: rgba(148, 163, 184, 0.22);
+      --radius-lg: 18px;
+      --shadow-soft: 0 22px 45px rgba(15, 23, 42, 0.85);
+      --transition-fast: 180ms ease-out;
+      --transition-med: 260ms ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text-main);
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 10% 0%, rgba(56, 189, 248, 0.18), transparent 55%),
+        radial-gradient(circle at 90% 100%, rgba(252, 165, 165, 0.16), transparent 55%),
+        radial-gradient(circle at 0% 100%, rgba(129, 140, 248, 0.22), transparent 55%),
+        linear-gradient(135deg, #020617, #020617 40%, #020617 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      animation: gradientShift 25s ease-in-out infinite alternate;
+    }
+
+    @keyframes gradientShift {
+      0% {
+        background-position: 0% 0%, 100% 100%, 0% 100%, 0% 0%;
+      }
+      50% {
+        background-position: 10% 10%, 90% 90%, 5% 95%, 50% 50%;
+      }
+      100% {
+        background-position: 20% 0%, 80% 100%, 10% 90%, 100% 100%;
+      }
+    }
+
+    .page {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px 16px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.08), transparent 55%),
+                  rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      backdrop-filter: blur(22px);
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.9);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: conic-gradient(from 210deg, #f97316, #facc15, #22c55e, #0ea5e9, #f97316);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.8),
+                  0 0 20px rgba(248, 250, 252, 0.4);
+    }
+
+    .brand-mark-inner {
+      width: 22px;
+      height: 22px;
+      border-radius: inherit;
+      background: radial-gradient(circle at 30% 20%, #f8fafc, #020617);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: 0.06em;
+    }
+
+    .brand-text-main {
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      font-size: 15px;
+      text-transform: uppercase;
+    }
+
+    .brand-text-sub {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--text-muted);
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 13px;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: var(--text-muted);
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      transition: color var(--transition-fast),
+                  background var(--transition-fast),
+                  border-color var(--transition-fast),
+                  transform var(--transition-fast);
+      cursor: pointer;
+    }
+
+    nav a:hover {
+      color: #e5e7eb;
+      background: rgba(15, 23, 42, 0.9);
+      border-color: rgba(148, 163, 184, 0.5);
+      transform: translateY(-1px);
+    }
+
+    nav .pill-clock {
+      border-color: rgba(248, 250, 252, 0.08);
+      background: radial-gradient(circle at 0% 0%, rgba(251, 191, 36, 0.21), transparent 65%),
+                  rgba(15, 23, 42, 0.95);
+      color: #f9fafb;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    nav .pill-clock span {
+      font-weight: 600;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.1fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .hero-copy {
+      padding: 20px 20px 18px;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.7));
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      box-shadow: var(--shadow-soft);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-copy::before {
+      content: "";
+      position: absolute;
+      inset: -30%;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.05), transparent 60%),
+        radial-gradient(circle at 120% 0%, rgba(248, 250, 252, 0.02), transparent 60%);
+      opacity: 0.85;
+      pointer-events: none;
+    }
+
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px 4px 5px;
+      border-radius: 999px;
+      border: 1px solid rgba(94, 234, 212, 0.55);
+      background: rgba(15, 23, 42, 0.95);
+      color: #a5f3fc;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-tag-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #22c55e, #16a34a);
+      box-shadow: 0 0 14px rgba(45, 212, 191, 0.9);
+    }
+
+    .hero-title {
+      font-size: clamp(26px, 4.1vw, 34px);
+      line-height: 1.15;
+      letter-spacing: 0.01em;
+      margin-bottom: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-title span {
+      background: linear-gradient(120deg, #f97316, #facc15, #22c55e, #0ea5e9);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .hero-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      max-width: 34rem;
+      margin-bottom: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-chip {
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+    }
+
+    .hero-chip strong {
+      color: #e5e7eb;
+      font-weight: 600;
+    }
+
+    .hero-highlight {
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-highlight-left {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: rgba(15, 23, 42, 0.98);
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 18px 30px rgba(15, 23, 42, 0.95);
+    }
+
+    .hero-highlight-pill {
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.2), transparent 80%),
+                  #020617;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: #e5e7eb;
+    }
+
+    .hero-highlight-emoji {
+      font-size: 14px;
+    }
+
+    .hero-highlight-text {
+      font-size: 11px;
+      color: #cbd5f5;
+    }
+
+    .hero-highlight-text strong {
+      color: #e5e7eb;
+      font-weight: 600;
+    }
+
+    .hero-orbit {
+      flex: 1;
+      height: 54px;
+      border-radius: 999px;
+      border: 1px dashed rgba(148, 163, 184, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      overflow: hidden;
+    }
+
+    .hero-orbit-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #f97316;
+      animation: orbitDot 3s linear infinite;
+    }
+
+    @keyframes orbitDot {
+      0% {
+        transform: translateX(-70px);
+        opacity: 0;
+      }
+      15% {
+        transform: translateX(-20px);
+        opacity: 0.9;
+      }
+      85% {
+        transform: translateX(20px);
+        opacity: 0.9;
+      }
+      100% {
+        transform: translateX(70px);
+        opacity: 0;
+      }
+    }
+
+    .hero-form-card {
+      padding: 18px 16px 14px;
+      border-radius: var(--radius-lg);
+      background: radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.08), transparent 60%),
+                  rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      box-shadow: var(--shadow-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-form-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.16), transparent 60%),
+        radial-gradient(circle at 80% 0%, rgba(248, 250, 252, 0.1), transparent 60%);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .hero-form-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+      margin-bottom: 2px;
+    }
+
+    .hero-form-title {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .hero-form-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .hero-form-pill {
+      font-size: 10px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(34, 197, 94, 0.6);
+      color: #bbf7d0;
+      background: rgba(21, 128, 61, 0.25);
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+
+    .hero-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+    }
+
+    .form-label {
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .form-label span {
+      font-size: 10px;
+      color: rgba(148, 163, 184, 0.9);
+    }
+
+    select,
+    input[type="date"],
+    input[type="number"] {
+      width: 100%;
+      padding: 7px 9px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background: rgba(15, 23, 42, 0.96);
+      color: var(--text-main);
+      font-size: 12px;
+      outline: none;
+      transition: border-color var(--transition-fast),
+                  box-shadow var(--transition-fast),
+                  background var(--transition-fast),
+                  transform var(--transition-fast);
+    }
+
+    select:focus,
+    input[type="date"]:focus,
+    input[type="number"]:focus {
+      border-color: rgba(248, 250, 252, 0.9);
+      box-shadow: 0 0 0 1px rgba(248, 250, 252, 0.7),
+                  0 0 24px rgba(248, 250, 252, 0.2);
+      background: rgba(15, 23, 42, 1);
+      transform: translateY(-1px);
+    }
+
+    input[type="number"]::-webkit-inner-spin-button {
+      opacity: 0.4;
+    }
+
+    .hero-form-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+      position: relative;
+      z-index: 1;
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      flex: 1.2;
+      padding: 8px 13px;
+      border-radius: 999px;
+      background: linear-gradient(120deg, #f97316, #facc15, #22c55e);
+      color: #0f172a;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow:
+        0 0 0 1px rgba(15, 23, 42, 0.8),
+        0 16px 30px rgba(15, 23, 42, 0.9);
+      transition: transform var(--transition-med),
+                  box-shadow var(--transition-med),
+                  filter var(--transition-med);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px) scale(1.02);
+      box-shadow:
+        0 0 0 1px rgba(15, 23, 42, 0.9),
+        0 18px 40px rgba(15, 23, 42, 1);
+      filter: brightness(1.05);
+    }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 8px 13px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.96);
+      color: var(--text-main);
+      font-size: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: transform var(--transition-fast),
+                  box-shadow var(--transition-fast),
+                  border-color var(--transition-fast),
+                  background var(--transition-fast);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(15, 23, 42, 1);
+      border-color: rgba(248, 250, 252, 0.7);
+      transform: translateY(-1px);
+      box-shadow: 0 16px 32px rgba(15, 23, 42, 0.9);
+    }
+
+    .btn-icon {
+      font-size: 13px;
+    }
+
+    .estimate-chip {
+      margin-top: 8px;
+      border-radius: 12px;
+      padding: 7px 9px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .estimate-amount {
+      font-weight: 700;
+    }
+
+    .estimate-label {
+      color: var(--text-muted);
+    }
+
+    .estimate-small {
+      font-size: 10px;
+      color: rgba(148, 163, 184, 0.9);
+    }
+
+    .hero-orbit-note {
+      display: none;
+    }
+
+    .section {
+      border-radius: var(--radius-lg);
+      padding: 14px 16px 14px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .section-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .city-chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background: rgba(15, 23, 42, 0.96);
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: transform var(--transition-fast),
+                  background var(--transition-fast),
+                  border-color var(--transition-fast),
+                  color var(--transition-fast),
+                  box-shadow var(--transition-fast);
+    }
+
+    .city-chip:hover {
+      border-color: rgba(248, 250, 252, 0.9);
+      color: #e5e7eb;
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.9);
+    }
+
+    .city-chip.active {
+      background: radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.18), transparent 65%),
+                  #020617;
+      border-color: rgba(249, 115, 22, 0.9);
+      color: #fed7aa;
+      box-shadow:
+        0 0 0 1px rgba(15, 23, 42, 0.9),
+        0 12px 30px rgba(15, 23, 42, 0.95);
+    }
+
+    .city-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr);
+      gap: 14px;
+    }
+
+    .city-panel {
+      border-radius: 14px;
+      padding: 10px 12px 12px;
+      background: radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.04), transparent 65%),
+                  rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      position: relative;
+      overflow: hidden;
+      animation: fadeInUp 360ms ease-out;
+    }
+
+    .city-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.06), transparent 65%);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .city-panel-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .city-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+
+    .city-name {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .city-name-pill {
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.75);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .city-tagline {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .city-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+
+    .city-meta-pill {
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      color: rgba(226, 232, 240, 0.95);
+    }
+
+    .city-meta-pill span {
+      color: var(--text-muted);
+    }
+
+    .city-attractions-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: rgba(148, 163, 184, 0.9);
+      margin-bottom: 4px;
+    }
+
+    .attractions-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 3px 10px;
+      font-size: 11px;
+      color: rgba(226, 232, 240, 0.95);
+    }
+
+    .attractions-list li::before {
+      content: "•";
+      margin-right: 4px;
+      color: #f97316;
+    }
+
+    .city-meter {
+      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .city-meter-bar-wrap {
+      width: 100%;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.96);
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+    }
+
+    .city-meter-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #22c55e, #facc15, #f97316);
+      animation: barFill 600ms ease-out forwards;
+    }
+
+    @keyframes barFill {
+      from { width: 0%; }
+      to { width: 78%; }
+    }
+
+    .properties-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      font-size: 11px;
+    }
+
+    .property-card {
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: rgba(15, 23, 42, 0.98);
+      padding: 7px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      transition: transform var(--transition-fast),
+                  box-shadow var(--transition-fast),
+                  border-color var(--transition-fast),
+                  background var(--transition-fast);
+    }
+
+    .property-card:hover {
+      transform: translateY(-2px) scale(1.01);
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.95);
+      border-color: rgba(249, 115, 22, 0.9);
+      background: radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.08), transparent 60%),
+                  rgba(15, 23, 42, 1);
+    }
+
+    .property-name {
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .property-meta {
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    .property-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 3px;
+    }
+
+    .property-rating {
+      font-size: 10px;
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .property-badge {
+      font-size: 10px;
+      padding: 2px 5px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.75);
+      color: rgba(226, 232, 240, 0.95);
+    }
+
+    .estimate-panel {
+      border-radius: 14px;
+      padding: 10px 11px 11px;
+      background: radial-gradient(circle at 0% 0%, rgba(248, 250, 252, 0.06), transparent 60%),
+                  rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr);
+      gap: 8px;
+      font-size: 11px;
+    }
+
+    .estimate-main-amount {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .estimate-main-label {
+      color: var(--text-muted);
+    }
+
+    .estimate-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 5px;
+    }
+
+    .estimate-badge {
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      font-size: 10px;
+      color: rgba(226, 232, 240, 0.95);
+    }
+
+    .estimate-breakdown {
+      padding: 7px 8px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px dashed rgba(148, 163, 184, 0.7);
+    }
+
+    .estimate-breakdown-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 3px;
+    }
+
+    .estimate-breakdown-row span:nth-child(1) {
+      color: var(--text-muted);
+    }
+
+    .estimate-note {
+      font-size: 10px;
+      color: rgba(148, 163, 184, 0.95);
+      margin-top: 3px;
+    }
+
+    footer {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: rgba(15, 23, 42, 0.9);
+      font-size: 10px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    footer a {
+      color: rgba(148, 163, 184, 0.95);
+      text-decoration: none;
+      margin-left: 8px;
+    }
+
+    footer a:hover {
+      color: #e5e7eb;
+      text-decoration: underline;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 900px) {
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        border-radius: 16px;
+      }
+
+      .hero {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .hero-form-card {
+        order: -1;
+      }
+
+      .city-layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .properties-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .estimate-panel {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .hero-orbit {
+        display: none;
+      }
+
+      .hero-orbit-note {
+        display: block;
+        margin-top: 4px;
+        font-size: 10px;
+        color: var(--text-muted);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="brand">
+        <div class="brand-mark">
+          <div class="brand-mark-inner">IN</div>
+        </div>
+        <div>
+          <div class="brand-text-main">Incredible India Planner</div>
+          <div class="brand-text-sub">Cities . Stays . Stories</div>
+        </div>
+      </div>
+      <nav>
+        <a>Destinations</a>
+        <a>Experiences</a>
+        <a>Offers</a>
+        <a>Help</a>
+        <a class="pill-clock">
+          IST • <span id="clockDisplay">--:--</span>
+        </a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <article class="hero-copy">
+          <div class="hero-tag">
+            <div class="hero-tag-dot"></div>
+            Smart trip planner for India
+          </div>
+          <h1 class="hero-title">
+            Design your <span>dream itinerary</span><br />
+            across India’s iconic cities.
+          </h1>
+          <p class="hero-sub">
+            Compare major Indian cities side-by-side, pick your dates,
+            estimate your budget, and discover stays and hotspots curated in one place.
+          </p>
+          <div class="hero-meta-row">
+            <div class="hero-chip">
+              <strong>10+</strong> cities mapped
+            </div>
+            <div class="hero-chip">
+              Live fare-style estimate in <strong>INR</strong>
+            </div>
+            <div class="hero-chip">
+              <strong>Attractions &amp; stays</strong> in one view
+            </div>
+          </div>
+
+          <div class="hero-highlight">
+            <div class="hero-highlight-left">
+              <div class="hero-highlight-pill">
+                LIVE ESTIMATE
+              </div>
+              <div class="hero-highlight-emoji">✈️</div>
+              <div class="hero-highlight-text">
+                Starting from <strong id="heroEstimate">₹0</strong> for your next city break.
+              </div>
+            </div>
+            <div class="hero-orbit">
+              <div class="hero-orbit-dot"></div>
+              <div>Scroll to cities ↓</div>
+            </div>
+          </div>
+          <p class="hero-orbit-note">
+            Tip: tap a city chip below to instantly switch between Delhi, Goa, Jaipur, and more.
+          </p>
+        </article>
+
+        <aside class="hero-form-card">
+          <div class="hero-form-header">
+            <div>
+              <div class="hero-form-title">Plan your stay</div>
+              <div class="hero-form-sub">Pick a city, dates, travellers & budget level.</div>
+            </div>
+            <div class="hero-form-pill">Instant estimate</div>
+          </div>
+
+          <form id="tripForm">
+            <div class="hero-form-grid">
+              <div class="form-group">
+                <label class="form-label" for="citySelect">
+                  City
+                  <span>Top tourist hubs</span>
+                </label>
+                <select id="citySelect" name="city">
+                  <!-- JS will populate -->
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="budgetLevel">
+                  Budget
+                  <span>Per night level</span>
+                </label>
+                <select id="budgetLevel" name="budget">
+                  <option value="mid">Mid-range</option>
+                  <option value="budget">Budget</option>
+                  <option value="luxury">Luxury</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="checkIn">
+                  Check-in
+                  <span>Flexible dates</span>
+                </label>
+                <input type="date" id="checkIn" name="checkIn" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="checkOut">
+                  Check-out
+                  <span>We’ll count nights</span>
+                </label>
+                <input type="date" id="checkOut" name="checkOut" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="travellers">
+                  Travellers
+                  <span>Adults + kids</span>
+                </label>
+                <input type="number" id="travellers" name="travellers" min="1" value="2" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  Quick info
+                  <span>City snapshot</span>
+                </label>
+                <div class="estimate-breakdown" id="quickInfo">
+                  Select a city to see peak season, typical fares & stay vibe.
+                </div>
+              </div>
+            </div>
+
+            <div class="hero-form-actions">
+              <button type="submit" class="btn-primary">
+                <span>Calculate trip</span>
+                <span class="btn-icon">→</span>
+              </button>
+              <button type="button" class="btn-secondary" id="scrollToDetails">
+                <span>Explore city</span>
+                <span class="btn-icon">⤵</span>
+              </button>
+            </div>
+
+            <div class="estimate-chip">
+              <div>
+                <div class="estimate-label">Estimated total (all travellers)</div>
+                <div class="estimate-small">
+                  Based on typical return flights &amp; per-night hotel spend.
+                </div>
+              </div>
+              <div class="estimate-amount" id="estimateInline">₹0</div>
+            </div>
+          </form>
+        </aside>
+      </section>
+
+      <section class="section" id="citySection">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Explore by city</div>
+            <div class="section-sub">
+              Tap a city to instantly see best season, highlights &amp; curated stays.
+            </div>
+          </div>
+        </div>
+        <div class="chip-row" id="cityChips">
+          <!-- JS will populate -->
+        </div>
+        <div class="city-layout">
+          <div class="city-panel">
+            <div class="city-panel-inner">
+              <div class="city-heading">
+                <div class="city-name">
+                  <span id="cityName">—</span>
+                  <span class="city-name-pill" id="cityRegion">India</span>
+                </div>
+              </div>
+              <p class="city-tagline" id="cityTagline">
+                Select a city to see its character, best time to visit and key hotspots.
+              </p>
+              <div class="city-meta">
+                <div class="city-meta-pill">
+                  Best season:&nbsp;<strong id="citySeason">—</strong>
+                </div>
+                <div class="city-meta-pill">
+                  Return flights from:&nbsp;<strong id="cityFlight">₹0</strong>&nbsp;<span>/ person</span>
+                </div>
+                <div class="city-meta-pill">
+                  Avg. stay:&nbsp;<strong id="cityHotel">₹0</strong>&nbsp;<span>/ night</span>
+                </div>
+              </div>
+              <div class="city-attractions-title">Signature highlights</div>
+              <ul class="attractions-list" id="attractionsList">
+                <!-- JS will populate -->
+              </ul>
+              <div class="city-meter">
+                <div>Vibe meter (food • culture • nightlife)</div>
+                <div class="city-meter-bar-wrap">
+                  <div class="city-meter-bar" id="cityMeterBar"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="city-panel">
+            <div class="city-panel-inner">
+              <div class="city-heading">
+                <div class="city-name">
+                  Stays we’d shortlist
+                </div>
+                <div class="city-name-pill">
+                  Hand-picked mix of styles
+                </div>
+              </div>
+              <p class="city-tagline">
+                Blend a hero property with a boutique stay or beach-side homestay for a varied trip.
+              </p>
+              <div class="properties-grid" id="propertiesGrid">
+                <!-- JS will populate -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="estimate-panel">
+          <div>
+            <div class="estimate-main-label">Your live estimate</div>
+            <div class="estimate-main-amount" id="estimateMain">₹0</div>
+            <div class="estimate-note" id="estimateContext">
+              Choose dates, travellers and a city to see an instant, ballpark budget.
+            </div>
+            <div class="estimate-badges">
+              <div class="estimate-badge" id="estimateNightsBadge">Nights: —</div>
+              <div class="estimate-badge" id="estimateTravellersBadge">Travellers: —</div>
+              <div class="estimate-badge" id="estimateBudgetBadge">Budget: Mid-range</div>
+            </div>
+          </div>
+          <div>
+            <div class="estimate-breakdown">
+              <div class="estimate-breakdown-row">
+                <span>Flight total</span>
+                <span id="flightBreakdown">₹0</span>
+              </div>
+              <div class="estimate-breakdown-row">
+                <span>Hotel total</span>
+                <span id="hotelBreakdown">₹0</span>
+              </div>
+              <div class="estimate-breakdown-row">
+                <span>Per person approx.</span>
+                <span id="perPersonBreakdown">₹0</span>
+              </div>
+            </div>
+            <div class="estimate-note">
+              These numbers are indicative only. Check real-time fares on OTAs like MakeMyTrip, Cleartrip,
+              Booking.com or Airbnb before booking.
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div>© <span id="yearSpan"></span> Incredible India Planner. Demo data for project use only.</div>
+      <div>
+        <a href="#">Terms</a>
+        <a href="#">Privacy</a>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // --- Static city data (dummy but realistic style) ---
+    const CITY_DATA = {
+      delhi: {
+        name: "Delhi",
+        region: "Capital • North India",
+        tagline: "Mughal-era monuments, chaotic bazaars and world-class street food.",
+        avgFlightFare: 6500,
+        avgNightlyRate: 3500,
+        vibeScore: 80,
+        bestSeason: "Oct – Mar",
+        attractions: [
+          "Red Fort & Chandni Chowk",
+          "Humayun’s Tomb",
+          "India Gate & Kartavya Path",
+          "Qutub Minar complex",
+          "Hauz Khas & cafes"
+        ],
+        properties: [
+          {
+            name: "The Imperial, New Delhi",
+            type: "Luxury heritage hotel",
+            rating: 4.8,
+            area: "Janpath"
+          },
+          {
+            name: "Taj Palace, New Delhi",
+            type: "Iconic 5-star city hotel",
+            rating: 4.7,
+            area: "Chanakyapuri"
+          },
+          {
+            name: "Bloomrooms @ New Delhi Railway Station",
+            type: "Design budget hotel",
+            rating: 4.4,
+            area: "Central Delhi"
+          },
+          {
+            name: "Haveli Dharampura",
+            type: "Boutique heritage stay",
+            rating: 4.6,
+            area: "Old Delhi"
+          }
+        ]
+      },
+      mumbai: {
+        name: "Mumbai",
+        region: "West Coast • Maharashtra",
+        tagline: "Seafront promenades, Bollywood glamour and buzzing nightlife.",
+        avgFlightFare: 7000,
+        avgNightlyRate: 4200,
+        vibeScore: 88,
+        bestSeason: "Nov – Feb",
+        attractions: [
+          "Gateway of India",
+          "Marine Drive & Chowpatty",
+          "Colaba & Kala Ghoda",
+          "Bandra fort & cafes",
+          "Elephanta Caves"
+        ],
+        properties: [
+          {
+            name: "The Taj Mahal Palace",
+            type: "Iconic seafront palace",
+            rating: 4.9,
+            area: "Colaba"
+          },
+          {
+            name: "Trident Nariman Point",
+            type: "Business + sea view hotel",
+            rating: 4.7,
+            area: "Nariman Point"
+          },
+          {
+            name: "Abode Bombay",
+            type: "Chic boutique hotel",
+            rating: 4.6,
+            area: "Colaba"
+          },
+          {
+            name: "Theory9 - Premium Service Apartments",
+            type: "Aparthotel / longer stays",
+            rating: 4.5,
+            area: "Bandra"
+          }
+        ]
+      },
+      jaipur: {
+        name: "Jaipur",
+        region: "Rajasthan • Golden Triangle",
+        tagline: "Pink city palaces, hilltop forts and royal Rajasthani hospitality.",
+        avgFlightFare: 5500,
+        avgNightlyRate: 3200,
+        vibeScore: 76,
+        bestSeason: "Oct – Mar",
+        attractions: [
+          "Amber Fort & Jaigarh",
+          "City Palace & Jantar Mantar",
+          "Hawa Mahal",
+          "Patrika Gate",
+          "Chokhi Dhani"
+        ],
+        properties: [
+          {
+            name: "Rambagh Palace",
+            type: "Royal heritage palace hotel",
+            rating: 4.9,
+            area: "Central Jaipur"
+          },
+          {
+            name: "Alsisar Haveli",
+            type: "Heritage haveli",
+            rating: 4.6,
+            area: "MI Road"
+          },
+          {
+            name: "Jai Niwas",
+            type: "Garden boutique stay",
+            rating: 4.5,
+            area: "Bani Park"
+          },
+          {
+            name: "Zostel Jaipur",
+            type: "Social backpacker hostel",
+            rating: 4.4,
+            area: "MI Road"
+          }
+        ]
+      },
+      agra: {
+        name: "Agra",
+        region: "Uttar Pradesh • Golden Triangle",
+        tagline: "Home of the Taj Mahal and timeless Mughal architecture.",
+        avgFlightFare: 5000,
+        avgNightlyRate: 2800,
+        vibeScore: 70,
+        bestSeason: "Oct – Mar",
+        attractions: [
+          "Taj Mahal (sunrise / sunset)",
+          "Agra Fort",
+          "Mehtab Bagh",
+          "Itmad-ud-Daulah (Baby Taj)",
+          "Taj Nature Walk"
+        ],
+        properties: [
+          {
+            name: "The Oberoi Amarvilas",
+            type: "Luxury with Taj views",
+            rating: 4.9,
+            area: "Tajganj"
+          },
+          {
+            name: "Trident Agra",
+            type: "Resort-style city hotel",
+            rating: 4.6,
+            area: "Tajganj"
+          },
+          {
+            name: "Ekaa Villa",
+            type: "Boutique homestay",
+            rating: 4.7,
+            area: "Taj East Gate"
+          },
+          {
+            name: "Joey's Hostel",
+            type: "Budget hostel with rooftop",
+            rating: 4.4,
+            area: "Near Taj Mahal"
+          }
+        ]
+      },
+      goa: {
+        name: "Goa",
+        region: "Konkan Coast • Beaches",
+        tagline: "Sun-drenched beaches, shacks, nightlife and Portuguese charm.",
+        avgFlightFare: 7500,
+        avgNightlyRate: 4200,
+        vibeScore: 90,
+        bestSeason: "Nov – Feb",
+        attractions: [
+          "Baga & Calangute beaches",
+          "Candolim & Sinquerim",
+          "Old Goa churches",
+          "Palolem & Agonda",
+          "Fontainhas Latin quarter"
+        ],
+        properties: [
+          {
+            name: "Taj Fort Aguada Resort & Spa",
+            type: "Clifftop luxury resort",
+            rating: 4.8,
+            area: "Candolim / Sinquerim"
+          },
+          {
+            name: "W Goa",
+            type: "Trendy luxury beachfront",
+            rating: 4.7,
+            area: "Vagator"
+          },
+          {
+            name: "Mojigao",
+            type: "Eco boutique stay",
+            rating: 4.6,
+            area: "Assagao"
+          },
+          {
+            name: "Pappi Chulo Hostel",
+            type: "Backpacker hostel",
+            rating: 4.4,
+            area: "Vagator"
+          }
+        ]
+      },
+      bengaluru: {
+        name: "Bengaluru",
+        region: "Karnataka • South India",
+        tagline: "Garden city turned tech hub with craft beer and cool cafes.",
+        avgFlightFare: 6500,
+        avgNightlyRate: 3300,
+        vibeScore: 82,
+        bestSeason: "Year-round (mild weather)",
+        attractions: [
+          "Cubbon Park & Vidhana Soudha",
+          "MG Road & Church Street",
+          "Lalbagh Botanical Garden",
+          "Nandi Hills sunrise",
+          "Indiranagar pubs & cafes"
+        ],
+        properties: [
+          {
+            name: "The Leela Bhartiya City",
+            type: "Luxury urban resort",
+            rating: 4.8,
+            area: "Bhartiya City"
+          },
+          {
+            name: "Taj MG Road",
+            type: "Business + leisure hotel",
+            rating: 4.6,
+            area: "MG Road"
+          },
+          {
+            name: "The Oberoi, Bengaluru",
+            type: "Leafy luxury stay",
+            rating: 4.8,
+            area: "MG Road"
+          },
+          {
+            name: "Social Rehab Hostel",
+            type: "Budget hostel",
+            rating: 4.3,
+            area: "Indiranagar"
+          }
+        ]
+      },
+      kolkata: {
+        name: "Kolkata",
+        region: "West Bengal • East India",
+        tagline: "Colonial architecture, slow tram rides and soulful food culture.",
+        avgFlightFare: 7000,
+        avgNightlyRate: 3000,
+        vibeScore: 74,
+        bestSeason: "Oct – Feb",
+        attractions: [
+          "Victoria Memorial",
+          "Howrah Bridge",
+          "Park Street",
+          "Kumartuli artisans",
+          "College Street book market"
+        ],
+        properties: [
+          {
+            name: "The Oberoi Grand",
+            type: "Heritage luxury hotel",
+            rating: 4.8,
+            area: "Esplanade"
+          },
+          {
+            name: "Taj Bengal",
+            type: "Upscale city hotel",
+            rating: 4.7,
+            area: "Alipore"
+          },
+          {
+            name: "Calcutta Bungalow",
+            type: "Boutique heritage stay",
+            rating: 4.6,
+            area: "Shyambazar"
+          },
+          {
+            name: "Zostel Kolkata",
+            type: "Hostel for backpackers",
+            rating: 4.4,
+            area: "Park Street side"
+          }
+        ]
+      },
+      chennai: {
+        name: "Chennai",
+        region: "Tamil Nadu • South India",
+        tagline: "Temple architecture, long city beaches and filter coffee mornings.",
+        avgFlightFare: 6500,
+        avgNightlyRate: 3100,
+        vibeScore: 72,
+        bestSeason: "Nov – Feb",
+        attractions: [
+          "Marina & Elliot’s Beach",
+          "Kapaleeshwarar Temple",
+          "Fort St. George",
+          "Santhome Basilica",
+          "Mahabalipuram day trip"
+        ],
+        properties: [
+          {
+            name: "ITC Grand Chola",
+            type: "Opulent luxury hotel",
+            rating: 4.8,
+            area: "Guindy"
+          },
+          {
+            name: "The Leela Palace Chennai",
+            type: "Sea-facing luxury",
+            rating: 4.8,
+            area: "MRC Nagar"
+          },
+          {
+            name: "The Lotus Apartment Hotel",
+            type: "Serviced apartments",
+            rating: 4.4,
+            area: "T. Nagar"
+          },
+          {
+            name: "Broadlands",
+            type: "Old-world budget stay",
+            rating: 4.1,
+            area: "Triplicane"
+          }
+        ]
+      },
+      varanasi: {
+        name: "Varanasi",
+        region: "Uttar Pradesh • Spiritual India",
+        tagline: "Ancient ghats, aarti rituals and timeless lanes along the Ganges.",
+        avgFlightFare: 6000,
+        avgNightlyRate: 2600,
+        vibeScore: 78,
+        bestSeason: "Oct – Mar",
+        attractions: [
+          "Dashashwamedh & Assi ghats",
+          "Ganga aarti",
+          "Boat ride at sunrise",
+          "Kashi Vishwanath temple",
+          "Old city lanes & lassi"
+        ],
+        properties: [
+          {
+            name: "BrijRama Palace",
+            type: "Palace hotel on the ghat",
+            rating: 4.8,
+            area: "Darbhanga Ghat"
+          },
+          {
+            name: "Amritara Suryauday Haveli",
+            type: "Ghat-side heritage stay",
+            rating: 4.6,
+            area: "Shivala Ghat"
+          },
+          {
+            name: "Stops Hostel Varanasi",
+            type: "Popular backpacker hostel",
+            rating: 4.4,
+            area: "Near Ravidas Ghat"
+          },
+          {
+            name: "Ganges View",
+            type: "Boutique homestay",
+            rating: 4.7,
+            area: "Assi Ghat"
+          }
+        ]
+      },
+      udaipur: {
+        name: "Udaipur",
+        region: "Rajasthan • Lake City",
+        tagline: "Romantic lakes, marble palaces and sunset boat rides.",
+        avgFlightFare: 6200,
+        avgNightlyRate: 3800,
+        vibeScore: 84,
+        bestSeason: "Oct – Mar",
+        attractions: [
+          "City Palace & Museum",
+          "Lake Pichola boat ride",
+          "Jag Mandir & Jagdish Temple",
+          "Fateh Sagar Lake",
+          "Saheliyon-ki-Bari"
+        ],
+        properties: [
+          {
+            name: "The Oberoi Udaivilas",
+            type: "Ultra luxury lakeside",
+            rating: 4.9,
+            area: "Lake Pichola"
+          },
+          {
+            name: "Taj Lake Palace",
+            type: "Iconic island palace",
+            rating: 4.9,
+            area: "Lake Pichola"
+          },
+          {
+            name: "Madri Haveli",
+            type: "Chic heritage haveli",
+            rating: 4.6,
+            area: "Old City"
+          },
+          {
+            name: "Moustache Hostel Udaipur",
+            type: "Lakeside hostel",
+            rating: 4.5,
+            area: "Old City"
+          }
+        ]
+      }
+    };
+
+    const cityOrder = [
+      "delhi",
+      "mumbai",
+      "jaipur",
+      "agra",
+      "goa",
+      "bengaluru",
+      "kolkata",
+      "chennai",
+      "varanasi",
+      "udaipur"
+    ];
+
+    // --- Helper functions ---
+    function formatINR(amount) {
+      if (!Number.isFinite(amount)) return "₹0";
+      return "₹" + Math.round(amount).toLocaleString("en-IN");
+    }
+
+    function animNumber(element, from, to, duration = 600) {
+      const start = performance.now();
+      const diff = to - from;
+      function step(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        const current = from + diff * eased;
+        element.textContent = formatINR(current);
+        if (t < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function parseDateInput(value) {
+      if (!value) return null;
+      const parts = value.split("-");
+      if (parts.length !== 3) return null;
+      const [y, m, d] = parts.map(Number);
+      if (!y || !m || !d) return null;
+      return new Date(y, m - 1, d);
+    }
+
+    function calcNights(fromDate, toDate) {
+      if (!fromDate || !toDate) return 1;
+      const diffMs = toDate - fromDate;
+      if (diffMs <= 0) return 1;
+      const nights = Math.round(diffMs / (1000 * 60 * 60 * 24));
+      return Math.max(1, nights);
+    }
+
+    // --- DOM references ---
+    const citySelect = document.getElementById("citySelect");
+    const cityChipsContainer = document.getElementById("cityChips");
+    const cityNameEl = document.getElementById("cityName");
+    const cityRegionEl = document.getElementById("cityRegion");
+    const cityTaglineEl = document.getElementById("cityTagline");
+    const citySeasonEl = document.getElementById("citySeason");
+    const cityFlightEl = document.getElementById("cityFlight");
+    const cityHotelEl = document.getElementById("cityHotel");
+    const attractionsListEl = document.getElementById("attractionsList");
+    const propertiesGridEl = document.getElementById("propertiesGrid");
+    const cityMeterBarEl = document.getElementById("cityMeterBar");
+
+    const quickInfoEl = document.getElementById("quickInfo");
+
+    const estimateInlineEl = document.getElementById("estimateInline");
+    const estimateMainEl = document.getElementById("estimateMain");
+    const heroEstimateEl = document.getElementById("heroEstimate");
+    const estimateContextEl = document.getElementById("estimateContext");
+    const flightBreakdownEl = document.getElementById("flightBreakdown");
+    const hotelBreakdownEl = document.getElementById("hotelBreakdown");
+    const perPersonBreakdownEl = document.getElementById("perPersonBreakdown");
+    const estimateNightsBadgeEl = document.getElementById("estimateNightsBadge");
+    const estimateTravellersBadgeEl = document.getElementById("estimateTravellersBadge");
+    const estimateBudgetBadgeEl = document.getElementById("estimateBudgetBadge");
+
+    const tripForm = document.getElementById("tripForm");
+    const scrollToDetailsBtn = document.getElementById("scrollToDetails");
+    const citySection = document.getElementById("citySection");
+
+    const checkInInput = document.getElementById("checkIn");
+    const checkOutInput = document.getElementById("checkOut");
+    const travellersInput = document.getElementById("travellers");
+    const budgetLevelSelect = document.getElementById("budgetLevel");
+
+    const clockDisplay = document.getElementById("clockDisplay");
+    const yearSpan = document.getElementById("yearSpan");
+
+    let activeCityKey = cityOrder[0];
+    let lastTotalEstimate = 0;
+
+    // --- Initialization ---
+    function populateCitySelect() {
+      cityOrder.forEach((key) => {
+        const city = CITY_DATA[key];
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = city.name;
+        citySelect.appendChild(option);
+      });
+    }
+
+    function populateCityChips() {
+      cityChipsContainer.innerHTML = "";
+      cityOrder.forEach((key) => {
+        const city = CITY_DATA[key];
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "city-chip";
+        chip.dataset.cityKey = key;
+        chip.textContent = city.name;
+        chip.addEventListener("click", () => {
+          setActiveCity(key);
+          citySelect.value = key;
+        });
+        cityChipsContainer.appendChild(chip);
+      });
+    }
+
+    function updateCityChipsActive() {
+      const chips = cityChipsContainer.querySelectorAll(".city-chip");
+      chips.forEach((chip) => {
+        if (chip.dataset.cityKey === activeCityKey) {
+          chip.classList.add("active");
+        } else {
+          chip.classList.remove("active");
+        }
+      });
+    }
+
+    function renderCityDetails() {
+      const city = CITY_DATA[activeCityKey];
+      if (!city) return;
+
+      cityNameEl.textContent = city.name;
+      cityRegionEl.textContent = city.region;
+      cityTaglineEl.textContent = city.tagline;
+      citySeasonEl.textContent = city.bestSeason;
+      cityFlightEl.textContent = formatINR(city.avgFlightFare);
+      cityHotelEl.textContent = formatINR(city.avgNightlyRate);
+
+      attractionsListEl.innerHTML = "";
+      city.attractions.forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        attractionsListEl.appendChild(li);
+      });
+
+      propertiesGridEl.innerHTML = "";
+      city.properties.forEach((prop) => {
+        const card = document.createElement("div");
+        card.className = "property-card";
+        card.innerHTML = `
+          <div class="property-name">${prop.name}</div>
+          <div class="property-meta">${prop.type} • ${prop.area}</div>
+          <div class="property-row">
+            <div class="property-rating">
+              ★ ${prop.rating.toFixed(1)}
+            </div>
+            <div class="property-badge">Shortlist</div>
+          </div>
+        `;
+        propertiesGridEl.appendChild(card);
+      });
+
+      const vibePercent = Math.max(40, Math.min(100, city.vibeScore || 75));
+      cityMeterBarEl.style.width = vibePercent + "%";
+
+      quickInfoEl.textContent =
+        `${city.name}: best in ${city.bestSeason}. ` +
+        `Typical return flights from ${formatINR(city.avgFlightFare)} per person, ` +
+        `mid-range stays around ${formatINR(city.avgNightlyRate)} per night.`;
+    }
+
+    function setActiveCity(key) {
+      if (!CITY_DATA[key]) return;
+      activeCityKey = key;
+      updateCityChipsActive();
+      renderCityDetails();
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const hours = now.getHours().toString().padStart(2, "0");
+      const mins = now.getMinutes().toString().padStart(2, "0");
+      clockDisplay.textContent = `${hours}:${mins}`;
+    }
+
+    function updateYear() {
+      const now = new Date();
+      yearSpan.textContent = now.getFullYear();
+    }
+
+    function updateEstimateDisplay({
+      total,
+      flightCost,
+      hotelCost,
+      nights,
+      travellers,
+      budgetLabel
+    }) {
+      animNumber(estimateMainEl, lastTotalEstimate, total);
+      animNumber(estimateInlineEl, lastTotalEstimate, total);
+      animNumber(heroEstimateEl, lastTotalEstimate, total);
+      lastTotalEstimate = total;
+
+      flightBreakdownEl.textContent = formatINR(flightCost);
+      hotelBreakdownEl.textContent = formatINR(hotelCost);
+
+      const perPerson = travellers > 0 ? total / travellers : total;
+      perPersonBreakdownEl.textContent = formatINR(perPerson);
+
+      estimateNightsBadgeEl.textContent = `Nights: ${nights}`;
+      estimateTravellersBadgeEl.textContent = `Travellers: ${travellers}`;
+      estimateBudgetBadgeEl.textContent = `Budget: ${budgetLabel}`;
+
+      estimateContextEl.textContent =
+        `Ballpark budget for ${nights} night(s) in ${CITY_DATA[activeCityKey].name} ` +
+        `for ${travellers} traveller(s), assuming ${budgetLabel.toLowerCase()} hotels and typical return flights.`;
+    }
+
+    function handleTripFormSubmit(event) {
+      event.preventDefault();
+
+      const cityKey = citySelect.value || activeCityKey;
+      if (!CITY_DATA[cityKey]) return;
+      activeCityKey = cityKey;
+      updateCityChipsActive();
+      renderCityDetails();
+
+      const city = CITY_DATA[cityKey];
+
+      const checkIn = parseDateInput(checkInInput.value);
+      const checkOut = parseDateInput(checkOutInput.value);
+      const travellers = Math.max(1, Number(travellersInput.value) || 1);
+
+      const budgetLevel = budgetLevelSelect.value || "mid";
+      const multiplierMap = { budget: 0.7, mid: 1.0, luxury: 1.6 };
+      const labelMap = { budget: "Budget", mid: "Mid-range", luxury: "Luxury" };
+      const hotelMultiplier = multiplierMap[budgetLevel] || 1.0;
+      const budgetLabel = labelMap[budgetLevel] || "Mid-range";
+
+      const nights = calcNights(checkIn, checkOut);
+
+      const flightCost = travellers * (city.avgFlightFare || 0);
+      const hotelCost = nights * (city.avgNightlyRate || 0) * hotelMultiplier;
+      const total = flightCost + hotelCost;
+
+      updateEstimateDisplay({
+        total,
+        flightCost,
+        hotelCost,
+        nights,
+        travellers,
+        budgetLabel
+      });
+    }
+
+    function initScrollButton() {
+      scrollToDetailsBtn.addEventListener("click", () => {
+        citySection.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+
+    function initDefaultDates() {
+      const now = new Date();
+      const in7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const in10 = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000);
+
+      function toDateInput(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      }
+
+      checkInInput.value = toDateInput(in7);
+      checkOutInput.value = toDateInput(in10);
+    }
+
+    // --- Boot ---
+    function init() {
+      populateCitySelect();
+      populateCityChips();
+      setActiveCity(activeCityKey);
+      citySelect.value = activeCityKey;
+
+      initDefaultDates();
+      updateClock();
+      updateYear();
+
+      setInterval(updateClock, 1000);
+
+      tripForm.addEventListener("submit", handleTripFormSubmit);
+      initScrollButton();
+
+      // Initial dummy estimate
+      handleTripFormSubmit(new Event("submit"));
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
