@@ -1,835 +1,1097 @@
-cat > voice_lab.py <<'PY'
-import math
-import random
-import wave
-import struct
-import csv
-import cmath
-from pathlib import Path
+pkg update -y && pkg install clang -y && cat > $HOME/mobile_ml_engine.c <<'EOF'
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <math.h>
+#include <time.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <signal.h>
 
-# ============================================================
-# MOBILE VOICE SIGNAL SYNTHESIS + ANALYSIS LAB
-# Pure Python - designed to run in Termux
-# ============================================================
+#if defined(__aarch64__)
+#include <arm_neon.h>
+#endif
 
-SAMPLE_RATE = 16000
-DURATION_PER_VOWEL = 0.75
-F0 = 125.0                   # fundamental pitch in Hz
-MAX_HARMONICS = 35
-OUTPUT_WAV = "synthetic_voice.wav"
-OUTPUT_CSV = "voice_analysis.csv"
+typedef struct {
+    int id;
+    int hidden;
+    int ff;
+    uint64_t end_ns;
+    volatile int *stop;
+    double ops;
+    uint64_t steps;
+    double loss_sum;
+} WorkerCfg;
 
-random.seed(42)
+static volatile sig_atomic_t g_stop = 0;
 
-# Approximate formant frequencies:
-# F1, F2, F3
-VOWELS = {
-    "A": (730, 1090, 2440),
-    "E": (530, 1840, 2480),
-    "I": (270, 2290, 3010),
-    "O": (570, 840, 2410),
-    "U": (300, 870, 2240),
+static void signal_handler(int sig)
+{
+    (void)sig;
+    g_stop = 1;
 }
 
-# ============================================================
-# UTILITY FUNCTIONS
-# ============================================================
+static uint64_t now_ns(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000000ULL +
+           (uint64_t)ts.tv_nsec;
+}
+
+static uint64_t read_mem_available_kb(void)
+{
+    FILE *f = fopen("/proc/meminfo", "r");
 
-def db(x):
-    if x <= 1e-12:
-        return -120.0
-    return 20.0 * math.log10(x)
+    if (!f)
+        return 0;
 
+    char key[64];
+    char unit[32];
+    unsigned long long value;
+    uint64_t result = 0;
 
-def rms(signal):
-    return math.sqrt(sum(x*x for x in signal) / max(1, len(signal)))
+    while (fscanf(f, "%63s %llu %31s", key, &value, unit) == 3)
+    {
+        if (strcmp(key, "MemAvailable:") == 0)
+        {
+            result = value;
+            break;
+        }
+    }
 
+    fclose(f);
+    return result;
+}
 
-def peak(signal):
-    return max(abs(x) for x in signal)
+static uint64_t rng64(uint64_t *state)
+{
+    uint64_t x = *state;
 
-
-def zero_crossing_rate(signal):
-    count = 0
-
-    for a, b in zip(signal[:-1], signal[1:]):
-        if (a < 0 <= b) or (a >= 0 > b):
-            count += 1
-
-    return count / len(signal)
-
-
-# ============================================================
-# FORMANT MODEL
-#
-# Instead of filtering afterward, each harmonic gets weighted
-# depending on its distance from vocal tract resonances.
-# ============================================================
-
-def resonance(freq, center, bandwidth):
-
-    distance = (freq - center) / bandwidth
-
-    return 1.0 / math.sqrt(
-        1.0 + distance * distance
-    )
-
-
-def formant_gain(freq, formants):
-
-    f1, f2, f3 = formants
-
-    g1 = resonance(freq, f1, 90)
-    g2 = resonance(freq, f2, 120)
-    g3 = resonance(freq, f3, 180)
-
-    # weighted mixture
-    gain = (
-        1.00 * g1 +
-        0.70 * g2 +
-        0.35 * g3
-    )
-
-    return gain
-
-
-# ============================================================
-# SYNTHESIZE ONE VOWEL
-# ============================================================
-
-def synthesize_vowel(name, formants, duration):
-
-    samples = []
-
-    total = int(duration * SAMPLE_RATE)
-
-    phases = [
-        random.random() * 2 * math.pi
-        for _ in range(MAX_HARMONICS)
-    ]
-
-    for n in range(total):
-
-        t = n / SAMPLE_RATE
-
-        # ----------------------------------------------------
-        # Pitch vibrato
-        # ----------------------------------------------------
-
-        vibrato_rate = 5.2
-        vibrato_depth = 0.012
-
-        pitch = F0 * (
-            1 +
-            vibrato_depth *
-            math.sin(2 * math.pi * vibrato_rate * t)
-        )
-
-        # ----------------------------------------------------
-        # Slow pitch drift
-        # ----------------------------------------------------
-
-        pitch *= (
-            1 +
-            0.008 *
-            math.sin(2 * math.pi * 0.8 * t)
-        )
-
-        sample = 0.0
-
-        # ----------------------------------------------------
-        # Harmonic glottal source
-        # ----------------------------------------------------
-
-        for h in range(1, MAX_HARMONICS + 1):
-
-            freq = h * pitch
-
-            if freq >= SAMPLE_RATE / 2:
-                break
-
-            # Natural harmonic rolloff
-            harmonic_amp = 1.0 / (h ** 1.25)
-
-            # Vocal tract resonance
-            vocal_gain = formant_gain(
-                freq,
-                formants
-            )
-
-            amp = harmonic_amp * vocal_gain
-
-            sample += amp * math.sin(
-                2 * math.pi * freq * t +
-                phases[h - 1]
-            )
-
-        # ----------------------------------------------------
-        # Breath noise
-        # ----------------------------------------------------
-
-        breath = random.uniform(-1, 1) * 0.018
-
-        sample += breath
-
-        # ----------------------------------------------------
-        # Attack / Release envelope
-        # ----------------------------------------------------
-
-        attack = 0.06
-        release = 0.10
-
-        if t < attack:
-
-            envelope = t / attack
-
-        elif t > duration - release:
-
-            envelope = max(
-                0,
-                (duration - t) / release
-            )
-
-        else:
-
-            envelope = 1.0
-
-        # slight human amplitude modulation
-        envelope *= (
-            0.96 +
-            0.04 *
-            math.sin(2 * math.pi * 3.1 * t)
-        )
-
-        sample *= envelope
-
-        samples.append(sample)
-
-    # normalize individual vowel
-    p = peak(samples)
-
-    if p > 0:
-
-        samples = [
-            0.82 * x / p
-            for x in samples
-        ]
-
-    return samples
-
-
-# ============================================================
-# BUILD FULL SPEECH-LIKE SIGNAL
-# ============================================================
-
-voice = []
-regions = []
-
-print()
-print("=" * 65)
-print("       TERMUX VOICE SYNTHESIS + SIGNAL ANALYSIS LAB")
-print("=" * 65)
-print()
-
-cursor = 0
-
-for vowel, formants in VOWELS.items():
-
-    print(
-        f"Synthesizing vowel {vowel} "
-        f"with formants {formants}"
-    )
-
-    segment = synthesize_vowel(
-        vowel,
-        formants,
-        DURATION_PER_VOWEL
-    )
-
-    start = cursor
-    voice.extend(segment)
-
-    cursor += len(segment)
-
-    regions.append(
-        (
-            vowel,
-            start,
-            cursor,
-            formants
-        )
-    )
-
-    # tiny pause
-    silence_samples = int(
-        0.08 * SAMPLE_RATE
-    )
-
-    voice.extend(
-        [0.0] * silence_samples
-    )
-
-    cursor += silence_samples
-
-
-# ============================================================
-# GLOBAL NORMALIZATION
-# ============================================================
-
-p = peak(voice)
-
-if p > 0:
-
-    voice = [
-        0.95 * x / p
-        for x in voice
-    ]
-
-
-# ============================================================
-# WRITE WAV FILE
-# ============================================================
-
-with wave.open(
-    OUTPUT_WAV,
-    "w"
-) as wf:
-
-    wf.setnchannels(1)
-    wf.setsampwidth(2)
-    wf.setframerate(SAMPLE_RATE)
-
-    for x in voice:
-
-        val = int(
-            max(
-                -32767,
-                min(
-                    32767,
-                    x * 32767
-                )
-            )
-        )
-
-        wf.writeframes(
-            struct.pack("<h", val)
-        )
-
-
-# ============================================================
-# AUTOCORRELATION PITCH ESTIMATION
-# ============================================================
-
-def estimate_pitch(signal):
-
-    # use only limited signal
-    x = signal[:4096]
-
-    mean = sum(x) / len(x)
-
-    x = [
-        sample - mean
-        for sample in x
-    ]
-
-    minimum_pitch = 70
-    maximum_pitch = 350
-
-    min_lag = int(
-        SAMPLE_RATE / maximum_pitch
-    )
-
-    max_lag = int(
-        SAMPLE_RATE / minimum_pitch
-    )
-
-    best_lag = None
-    best_corr = -1e30
-
-    for lag in range(
-        min_lag,
-        max_lag + 1
-    ):
-
-        correlation = 0.0
-
-        for i in range(
-            len(x) - lag
-        ):
-
-            correlation += (
-                x[i] *
-                x[i + lag]
-            )
-
-        if correlation > best_corr:
-
-            best_corr = correlation
-            best_lag = lag
-
-    if best_lag:
-
-        return (
-            SAMPLE_RATE /
-            best_lag
-        )
-
-    return 0
-
-
-# ============================================================
-# SIMPLE DFT
-#
-# We only inspect selected frequencies instead of computing
-# a full FFT. This keeps it pure Python and mobile friendly.
-# ============================================================
-
-def spectral_magnitude(
-    signal,
-    frequency
-):
-
-    n_samples = len(signal)
-
-    real = 0.0
-    imag = 0.0
-
-    for n, x in enumerate(signal):
-
-        angle = (
-            -2 *
-            math.pi *
-            frequency *
-            n /
-            SAMPLE_RATE
-        )
-
-        real += (
-            x *
-            math.cos(angle)
-        )
-
-        imag += (
-            x *
-            math.sin(angle)
-        )
-
-    return (
-        math.sqrt(
-            real*real +
-            imag*imag
-        ) /
-        n_samples
-    )
-
-
-# ============================================================
-# ASCII SPECTRUM
-# ============================================================
-
-def ascii_spectrum(signal):
-
-    print()
-    print("=" * 65)
-    print("ASCII FREQUENCY SPECTRUM")
-    print("=" * 65)
-
-    frequencies = list(
-        range(
-            100,
-            3501,
-            100
-        )
-    )
-
-    magnitudes = []
-
-    short_signal = signal[:2048]
-
-    for frequency in frequencies:
-
-        magnitude = spectral_magnitude(
-            short_signal,
-            frequency
-        )
-
-        magnitudes.append(magnitude)
-
-    maximum = max(magnitudes)
-
-    for frequency, magnitude in zip(
-        frequencies,
-        magnitudes
-    ):
-
-        relative = (
-            magnitude / maximum
-            if maximum
-            else 0
-        )
-
-        bars = int(
-            relative * 45
-        )
-
-        print(
-            f"{frequency:4d} Hz | "
-            +
-            "█" * bars
-        )
-
-
-# ============================================================
-# ANALYSIS
-# ============================================================
-
-print()
-print("=" * 65)
-print("GLOBAL SIGNAL ANALYSIS")
-print("=" * 65)
-
-duration = (
-    len(voice) /
-    SAMPLE_RATE
-)
-
-global_rms = rms(voice)
-
-global_peak = peak(voice)
-
-global_zcr = zero_crossing_rate(
-    voice
-)
-
-print(
-    f"Sample rate          : {SAMPLE_RATE} Hz"
-)
-
-print(
-    f"Samples              : {len(voice)}"
-)
-
-print(
-    f"Duration             : {duration:.3f} sec"
-)
-
-print(
-    f"Peak amplitude       : {global_peak:.4f}"
-)
-
-print(
-    f"RMS amplitude        : {global_rms:.4f}"
-)
-
-print(
-    f"RMS level            : {db(global_rms):.2f} dBFS"
-)
-
-print(
-    f"Zero crossing rate   : {global_zcr:.5f}"
-)
-
-
-# ============================================================
-# ANALYZE EACH VOWEL
-# ============================================================
-
-results = []
-
-print()
-print("=" * 65)
-print("VOWEL ANALYSIS")
-print("=" * 65)
-
-for (
-    vowel,
-    start,
-    end,
-    formants
-) in regions:
-
-    segment = voice[
-        start:end
-    ]
-
-    # discard attack for pitch estimation
-    analysis_start = int(
-        0.15 *
-        SAMPLE_RATE
-    )
-
-    analysis_segment = segment[
-        analysis_start:
-        analysis_start + 4096
-    ]
-
-    pitch = estimate_pitch(
-        analysis_segment
-    )
-
-    segment_rms = rms(
-        segment
-    )
-
-    segment_peak = peak(
-        segment
-    )
-
-    zcr = zero_crossing_rate(
-        segment
-    )
-
-    print()
-    print(
-        f"Vowel: {vowel}"
-    )
-
-    print(
-        f"  Estimated pitch : "
-        f"{pitch:.2f} Hz"
-    )
-
-    print(
-        f"  RMS             : "
-        f"{segment_rms:.4f}"
-    )
-
-    print(
-        f"  Peak            : "
-        f"{segment_peak:.4f}"
-    )
-
-    print(
-        f"  Zero crossing   : "
-        f"{zcr:.5f}"
-    )
-
-    print(
-        f"  Target formants : "
-        f"{formants[0]}, "
-        f"{formants[1]}, "
-        f"{formants[2]} Hz"
-    )
-
-    # Formant-region spectral amplitudes
-
-    amplitudes = []
-
-    for frequency in formants:
-
-        amp = spectral_magnitude(
-            analysis_segment[:2048],
-            frequency
-        )
-
-        amplitudes.append(
-            amp
-        )
-
-    print(
-        "  Spectral energy :"
-    )
-
-    for frequency, amp in zip(
-        formants,
-        amplitudes
-    ):
-
-        print(
-            f"      {frequency:4d} Hz "
-            f"-> {amp:.6f}"
-        )
-
-    results.append(
-        [
-            vowel,
-            pitch,
-            segment_rms,
-            segment_peak,
-            zcr,
-            formants[0],
-            formants[1],
-            formants[2],
-            amplitudes[0],
-            amplitudes[1],
-            amplitudes[2],
-        ]
-    )
-
-
-# ============================================================
-# HARMONIC ANALYSIS
-# ============================================================
-
-print()
-print("=" * 65)
-print("HARMONIC ANALYSIS OF FIRST VOWEL")
-print("=" * 65)
-
-first_segment = voice[
-    regions[0][1]:
-    regions[0][2]
-]
-
-analysis = first_segment[
-    int(
-        0.2 *
-        SAMPLE_RATE
-    ):
-]
-
-for h in range(
-    1,
-    16
-):
-
-    freq = h * F0
-
-    magnitude = spectral_magnitude(
-        analysis[:2048],
-        freq
-    )
-
-    bars = int(
-        min(
-            40,
-            magnitude * 180
-        )
-    )
-
-    print(
-        f"H{h:02d} "
-        f"{freq:7.1f} Hz "
-        f"{magnitude:8.5f} "
-        +
-        "▓" * bars
-    )
-
-
-# ============================================================
-# ASCII SPECTRUM
-# ============================================================
-
-ascii_spectrum(
-    first_segment[
-        int(
-            0.15 *
-            SAMPLE_RATE
-        ):
-    ]
-)
-
-
-# ============================================================
-# SAVE CSV ANALYSIS
-# ============================================================
-
-with open(
-    OUTPUT_CSV,
-    "w",
-    newline=""
-) as f:
-
-    writer = csv.writer(f)
-
-    writer.writerow(
-        [
-            "vowel",
-            "estimated_pitch_hz",
-            "rms",
-            "peak",
-            "zero_crossing_rate",
-            "formant_1_hz",
-            "formant_2_hz",
-            "formant_3_hz",
-            "formant_1_energy",
-            "formant_2_energy",
-            "formant_3_energy",
-        ]
-    )
-
-    writer.writerows(
-        results
-    )
-
-
-# ============================================================
-# FINAL REPORT
-# ============================================================
-
-print()
-print("=" * 65)
-print("EXPERIMENT COMPLETE")
-print("=" * 65)
-
-print()
-
-print(
-    "Generated audio :",
-    Path(
-        OUTPUT_WAV
-    ).resolve()
-)
-
-print(
-    "Analysis CSV    :",
-    Path(
-        OUTPUT_CSV
-    ).resolve()
-)
-
-print()
-print(
-    "The WAV contains a simulated vocal tract producing:"
-)
-
-print(
-    "A -> E -> I -> O -> U"
-)
-
-print()
-
-print(
-    "Fundamental pitch:",
-    F0,
-    "Hz"
-)
-
-print()
-
-print(
-    "Experiment demonstrates:"
-)
-
-print(
-    "  - Glottal harmonic source"
-)
-
-print(
-    "  - Vocal tract resonances / formants"
-)
-
-print(
-    "  - Harmonic spectral structure"
-)
-
-print(
-    "  - Pitch estimation using autocorrelation"
-)
-
-print(
-    "  - RMS / peak / zero-crossing analysis"
-)
-
-print(
-    "  - Frequency-domain analysis"
-)
-
-print(
-    "  - Voice signal synthesis"
-)
-
-print()
-PY
-
-python voice_lab.py
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+
+    *state = x;
+
+    return x;
+}
+
+static float random_float(uint64_t *state)
+{
+    uint64_t value = rng64(state);
+
+    return ((float)(value & 0x00ffffff) /
+            8388608.0f) - 1.0f;
+}
+
+static float dot_product(
+    const float *a,
+    const float *b,
+    int n)
+{
+
+#if defined(__aarch64__)
+
+    float32x4_t acc0 = vdupq_n_f32(0.0f);
+    float32x4_t acc1 = vdupq_n_f32(0.0f);
+    float32x4_t acc2 = vdupq_n_f32(0.0f);
+    float32x4_t acc3 = vdupq_n_f32(0.0f);
+
+    int i = 0;
+
+    for (; i + 16 <= n; i += 16)
+    {
+        float32x4_t a0 = vld1q_f32(a + i);
+        float32x4_t a1 = vld1q_f32(a + i + 4);
+        float32x4_t a2 = vld1q_f32(a + i + 8);
+        float32x4_t a3 = vld1q_f32(a + i + 12);
+
+        float32x4_t b0 = vld1q_f32(b + i);
+        float32x4_t b1 = vld1q_f32(b + i + 4);
+        float32x4_t b2 = vld1q_f32(b + i + 8);
+        float32x4_t b3 = vld1q_f32(b + i + 12);
+
+        acc0 = vfmaq_f32(acc0, a0, b0);
+        acc1 = vfmaq_f32(acc1, a1, b1);
+        acc2 = vfmaq_f32(acc2, a2, b2);
+        acc3 = vfmaq_f32(acc3, a3, b3);
+    }
+
+    acc0 = vaddq_f32(acc0, acc1);
+    acc2 = vaddq_f32(acc2, acc3);
+    acc0 = vaddq_f32(acc0, acc2);
+
+    float32x2_t low = vget_low_f32(acc0);
+    float32x2_t high = vget_high_f32(acc0);
+
+    float32x2_t pair = vadd_f32(low, high);
+    pair = vpadd_f32(pair, pair);
+
+    float result = vget_lane_f32(pair, 0);
+
+    for (; i < n; i++)
+        result += a[i] * b[i];
+
+    return result;
+
+#else
+
+    float result = 0.0f;
+
+    for (int i = 0; i < n; i++)
+        result += a[i] * b[i];
+
+    return result;
+
+#endif
+}
+
+static float fast_gelu(float x)
+{
+    const float c = 0.7978845608f;
+
+    float x3 = x * x * x;
+
+    return 0.5f * x *
+           (1.0f +
+            tanhf(c *
+                  (x +
+                   0.044715f * x3)));
+}
+
+static void layer_norm(
+    float *x,
+    int n)
+{
+    double mean = 0.0;
+    double sq = 0.0;
+
+    for (int i = 0; i < n; i++)
+    {
+        mean += x[i];
+        sq += (double)x[i] *
+              (double)x[i];
+    }
+
+    mean /= n;
+
+    double variance =
+        sq / n -
+        mean * mean;
+
+    float inv =
+        1.0f /
+        sqrtf(
+            (float)variance +
+            1e-5f);
+
+    for (int i = 0; i < n; i++)
+    {
+        x[i] =
+            (x[i] -
+             (float)mean) *
+            inv;
+    }
+}
+
+static void softmax_block(
+    float *x,
+    int n)
+{
+    float maximum = x[0];
+
+    for (int i = 1; i < n; i++)
+    {
+        if (x[i] > maximum)
+            maximum = x[i];
+    }
+
+    double total = 0.0;
+
+    for (int i = 0; i < n; i++)
+    {
+        x[i] =
+            expf(
+                x[i] -
+                maximum);
+
+        total += x[i];
+    }
+
+    float inv =
+        1.0f /
+        (float)total;
+
+    for (int i = 0; i < n; i++)
+        x[i] *= inv;
+}
+
+static void *ml_worker(
+    void *argument)
+{
+    WorkerCfg *cfg =
+        (WorkerCfg *)argument;
+
+    int H = cfg->hidden;
+    int F = cfg->ff;
+
+    uint64_t state =
+        0x9e3779b97f4a7c15ULL ^
+        ((uint64_t)cfg->id + 1ULL) *
+        0xbf58476d1ce4e5b9ULL;
+
+    float *input =
+        aligned_alloc(
+            64,
+            (size_t)H *
+            sizeof(float));
+
+    float *hidden =
+        aligned_alloc(
+            64,
+            (size_t)F *
+            sizeof(float));
+
+    float *output =
+        aligned_alloc(
+            64,
+            (size_t)H *
+            sizeof(float));
+
+    float *target =
+        aligned_alloc(
+            64,
+            (size_t)H *
+            sizeof(float));
+
+    float *momentum =
+        aligned_alloc(
+            64,
+            (size_t)H *
+            sizeof(float));
+
+    float *w1 =
+        aligned_alloc(
+            64,
+            (size_t)F *
+            H *
+            sizeof(float));
+
+    float *w2 =
+        aligned_alloc(
+            64,
+            (size_t)H *
+            F *
+            sizeof(float));
+
+    if (!input ||
+        !hidden ||
+        !output ||
+        !target ||
+        !momentum ||
+        !w1 ||
+        !w2)
+    {
+        fprintf(
+            stderr,
+            "worker %d allocation failure\n",
+            cfg->id);
+
+        free(input);
+        free(hidden);
+        free(output);
+        free(target);
+        free(momentum);
+        free(w1);
+        free(w2);
+
+        return NULL;
+    }
+
+    for (int i = 0; i < H; i++)
+    {
+        input[i] =
+            random_float(&state);
+
+        target[i] =
+            random_float(&state);
+
+        momentum[i] = 0.0f;
+    }
+
+    for (size_t i = 0;
+         i < (size_t)F * H;
+         i++)
+    {
+        w1[i] =
+            random_float(&state) *
+            0.035f;
+    }
+
+    for (size_t i = 0;
+         i < (size_t)H * F;
+         i++)
+    {
+        w2[i] =
+            random_float(&state) *
+            0.035f;
+    }
+
+    const float learning_rate =
+        0.00001f;
+
+    const float beta =
+        0.92f;
+
+    double operations_per_step =
+        6.0 *
+        (double)H *
+        (double)F;
+
+    while (!g_stop &&
+           !*(cfg->stop) &&
+           now_ns() <
+               cfg->end_ns)
+    {
+        layer_norm(
+            input,
+            H);
+
+        for (int row = 0;
+             row < F;
+             row++)
+        {
+            float value =
+                dot_product(
+                    w1 +
+                    (size_t)row *
+                    H,
+                    input,
+                    H);
+
+            hidden[row] =
+                fast_gelu(
+                    value);
+        }
+
+        for (int row = 0;
+             row < H;
+             row++)
+        {
+            output[row] =
+                dot_product(
+                    w2 +
+                    (size_t)row *
+                    F,
+                    hidden,
+                    F);
+        }
+
+        softmax_block(
+            output,
+            H);
+
+        double loss = 0.0;
+
+        for (int row = 0;
+             row < H;
+             row++)
+        {
+            float error =
+                output[row] -
+                target[row];
+
+            loss +=
+                (double)error *
+                error;
+
+            momentum[row] =
+                beta *
+                momentum[row] +
+                (1.0f - beta) *
+                error;
+
+            float gradient =
+                2.0f *
+                momentum[row] /
+                H;
+
+            float *weights =
+                w2 +
+                (size_t)row *
+                F;
+
+            for (int col = 0;
+                 col < F;
+                 col++)
+            {
+                weights[col] -=
+                    learning_rate *
+                    gradient *
+                    hidden[col];
+            }
+
+            input[row] =
+                0.993f *
+                input[row] +
+                0.007f *
+                target[row];
+        }
+
+        if ((cfg->steps & 31ULL) == 0)
+        {
+            for (int i = 0;
+                 i < H;
+                 i++)
+            {
+                target[i] =
+                    0.995f *
+                    target[i] +
+                    0.005f *
+                    random_float(
+                        &state);
+            }
+        }
+
+        cfg->loss_sum += loss;
+        cfg->steps++;
+        cfg->ops +=
+            operations_per_step;
+    }
+
+    free(input);
+    free(hidden);
+    free(output);
+    free(target);
+    free(momentum);
+    free(w1);
+    free(w2);
+
+    return NULL;
+}
+
+static double read_max_temperature(void)
+{
+    double maximum = -1.0;
+
+    char path[256];
+
+    for (int zone = 0;
+         zone < 128;
+         zone++)
+    {
+        snprintf(
+            path,
+            sizeof(path),
+            "/sys/class/thermal/thermal_zone%d/temp",
+            zone);
+
+        FILE *f =
+            fopen(path, "r");
+
+        if (!f)
+            continue;
+
+        double value;
+
+        if (fscanf(
+                f,
+                "%lf",
+                &value) == 1)
+        {
+            if (value > 1000.0)
+                value /= 1000.0;
+
+            if (value > 20.0 &&
+                value < 150.0 &&
+                value > maximum)
+            {
+                maximum = value;
+            }
+        }
+
+        fclose(f);
+    }
+
+    FILE *battery =
+        fopen(
+            "/sys/class/power_supply/battery/temp",
+            "r");
+
+    if (battery)
+    {
+        double value;
+
+        if (fscanf(
+                battery,
+                "%lf",
+                &value) == 1)
+        {
+            if (value > 1000.0)
+                value /= 1000.0;
+            else if (value > 100.0)
+                value /= 10.0;
+
+            if (value > 20.0 &&
+                value < 100.0 &&
+                value > maximum)
+            {
+                maximum = value;
+            }
+        }
+
+        fclose(battery);
+    }
+
+    return maximum;
+}
+
+static void memory_bandwidth_pass(
+    uint8_t *memory,
+    size_t bytes,
+    uint64_t *state)
+{
+    if (!memory ||
+        bytes < 4096)
+        return;
+
+    uint8_t acc =
+        (uint8_t)(*state);
+
+    const size_t page = 4096;
+
+    for (size_t i = 0;
+         i < bytes;
+         i += page)
+    {
+        uint8_t value =
+            memory[i];
+
+        acc ^=
+            value +
+            (uint8_t)(i >> 12);
+
+        memory[i] =
+            (uint8_t)(
+                value +
+                acc +
+                1);
+    }
+
+    *state =
+        *state *
+        6364136223846793005ULL +
+        acc +
+        1ULL;
+}
+
+int main(void)
+{
+    signal(
+        SIGINT,
+        signal_handler);
+
+    signal(
+        SIGTERM,
+        signal_handler);
+
+    long cpu_count =
+        sysconf(
+            _SC_NPROCESSORS_ONLN);
+
+    if (cpu_count < 1)
+        cpu_count = 1;
+
+    int threads =
+        (int)cpu_count;
+
+    char *environment =
+        getenv("CPU_THREADS");
+
+    if (environment &&
+        atoi(environment) > 0)
+    {
+        threads =
+            atoi(environment);
+    }
+
+    if (threads > 64)
+        threads = 64;
+
+    int duration_seconds =
+        1200;
+
+    environment =
+        getenv("DURATION_SEC");
+
+    if (environment &&
+        atoi(environment) > 0)
+    {
+        duration_seconds =
+            atoi(environment);
+    }
+
+    int ram_percentage =
+        65;
+
+    environment =
+        getenv("RAM_PCT");
+
+    if (environment)
+    {
+        int requested =
+            atoi(environment);
+
+        if (requested >= 10 &&
+            requested <= 80)
+        {
+            ram_percentage =
+                requested;
+        }
+    }
+
+    uint64_t available_bytes =
+        read_mem_available_kb() *
+        1024ULL;
+
+    size_t requested_ram =
+        (size_t)(
+            (long double)
+            available_bytes *
+            ram_percentage /
+            100.0L);
+
+    size_t maximum_ram =
+        (size_t)6 *
+        1024ULL *
+        1024ULL *
+        1024ULL;
+
+    if (requested_ram >
+        maximum_ram)
+    {
+        requested_ram =
+            maximum_ram;
+    }
+
+    uint8_t *memory_arena =
+        NULL;
+
+    size_t allocated_ram =
+        requested_ram;
+
+    while (
+        allocated_ram >=
+        128ULL *
+        1024ULL *
+        1024ULL)
+    {
+        memory_arena =
+            (uint8_t *)
+            malloc(
+                allocated_ram);
+
+        if (memory_arena)
+            break;
+
+        allocated_ram =
+            (size_t)(
+                allocated_ram *
+                0.82);
+    }
+
+    if (memory_arena)
+    {
+        for (size_t i = 0;
+             i < allocated_ram;
+             i += 4096)
+        {
+            memory_arena[i] =
+                (uint8_t)(
+                    (i >> 12) ^
+                    (i >> 20));
+        }
+    }
+
+    int hidden_size =
+        256;
+
+    int feedforward_size =
+        1024;
+
+    pthread_t *thread_handles =
+        calloc(
+            threads,
+            sizeof(
+                pthread_t));
+
+    WorkerCfg *workers =
+        calloc(
+            threads,
+            sizeof(
+                WorkerCfg));
+
+    if (!thread_handles ||
+        !workers)
+    {
+        fprintf(
+            stderr,
+            "thread allocation failed\n");
+
+        free(memory_arena);
+        free(thread_handles);
+        free(workers);
+
+        return 1;
+    }
+
+    volatile int stop = 0;
+
+    uint64_t start_time =
+        now_ns();
+
+    uint64_t end_time =
+        start_time +
+        (uint64_t)
+        duration_seconds *
+        1000000000ULL;
+
+    printf(
+        "\nMOBILE ML COMPUTE ENGINE\n");
+
+    printf(
+        "architecture      : ");
+
+#if defined(__aarch64__)
+    printf(
+        "ARM64 NEON\n");
+#else
+    printf(
+        "generic\n");
+#endif
+
+    printf(
+        "logical CPUs      : %ld\n",
+        cpu_count);
+
+    printf(
+        "worker threads    : %d\n",
+        threads);
+
+    printf(
+        "runtime           : %d seconds\n",
+        duration_seconds);
+
+    printf(
+        "RAM policy        : %d%% MemAvailable\n",
+        ram_percentage);
+
+    printf(
+        "RAM committed     : %.2f GiB\n",
+        (double)
+        allocated_ram /
+        1073741824.0);
+
+    printf(
+        "network width     : %d -> %d -> %d\n",
+        hidden_size,
+        feedforward_size,
+        hidden_size);
+
+    printf(
+        "\n");
+
+    fflush(stdout);
+
+    for (int i = 0;
+         i < threads;
+         i++)
+    {
+        workers[i].id =
+            i;
+
+        workers[i].hidden =
+            hidden_size;
+
+        workers[i].ff =
+            feedforward_size;
+
+        workers[i].end_ns =
+            end_time;
+
+        workers[i].stop =
+            &stop;
+
+        workers[i].ops =
+            0.0;
+
+        workers[i].steps =
+            0;
+
+        workers[i].loss_sum =
+            0.0;
+
+        pthread_create(
+            &thread_handles[i],
+            NULL,
+            ml_worker,
+            &workers[i]);
+    }
+
+    uint64_t memory_state =
+        123456789ULL;
+
+    uint64_t last_memory_pass =
+        start_time;
+
+    double peak_throughput =
+        0.0;
+
+    while (!g_stop &&
+           now_ns() <
+               end_time)
+    {
+        sleep(5);
+
+        uint64_t current_time =
+            now_ns();
+
+        double elapsed =
+            (current_time -
+             start_time) /
+            1e9;
+
+        double total_ops =
+            0.0;
+
+        double total_loss =
+            0.0;
+
+        uint64_t total_steps =
+            0;
+
+        for (int i = 0;
+             i < threads;
+             i++)
+        {
+            total_ops +=
+                workers[i].ops;
+
+            total_steps +=
+                workers[i].steps;
+
+            total_loss +=
+                workers[i].
+                loss_sum;
+        }
+
+        double gflops =
+            total_ops /
+            elapsed /
+            1e9;
+
+        if (gflops >
+            peak_throughput)
+        {
+            peak_throughput =
+                gflops;
+        }
+
+        uint64_t mem_available =
+            read_mem_available_kb();
+
+        double temperature =
+            read_max_temperature();
+
+        double progress =
+            elapsed /
+            duration_seconds *
+            100.0;
+
+        if (progress > 100.0)
+            progress = 100.0;
+
+        printf(
+            "time=%6.1fs "
+            "progress=%5.1f%% "
+            "steps=%llu "
+            "throughput=%8.2f GFLOP/s "
+            "peak=%8.2f "
+            "ram_free=%5.2f GiB",
+            elapsed,
+            progress,
+            (unsigned long long)
+            total_steps,
+            gflops,
+            peak_throughput,
+            (double)
+            mem_available *
+            1024.0 /
+            1073741824.0);
+
+        if (temperature > 0)
+        {
+            printf(
+                " temp=%5.1fC",
+                temperature);
+        }
+
+        if (total_steps > 0)
+        {
+            printf(
+                " loss=%8.5f",
+                total_loss /
+                total_steps);
+        }
+
+        printf("\n");
+
+        fflush(stdout);
+
+        if (memory_arena &&
+            current_time -
+            last_memory_pass >
+            10000000000ULL)
+        {
+            memory_bandwidth_pass(
+                memory_arena,
+                allocated_ram,
+                &memory_state);
+
+            last_memory_pass =
+                current_time;
+        }
+
+        if (temperature >= 88.0)
+        {
+            printf(
+                "thermal guard active: %.1fC\n",
+                temperature);
+
+            fflush(stdout);
+
+            sleep(20);
+        }
+    }
+
+    stop = 1;
+
+    for (int i = 0;
+         i < threads;
+         i++)
+    {
+        pthread_join(
+            thread_handles[i],
+            NULL);
+    }
+
+    double elapsed =
+        (now_ns() -
+         start_time) /
+        1e9;
+
+    double total_ops =
+        0.0;
+
+    double total_loss =
+        0.0;
+
+    uint64_t total_steps =
+        0;
+
+    for (int i = 0;
+         i < threads;
+         i++)
+    {
+        total_ops +=
+            workers[i].ops;
+
+        total_steps +=
+            workers[i].steps;
+
+        total_loss +=
+            workers[i].
+            loss_sum;
+    }
+
+    double average_gflops =
+        total_ops /
+        elapsed /
+        1e9;
+
+    printf(
+        "\nFINAL COMPUTE REPORT\n");
+
+    printf(
+        "elapsed           : %.2f sec\n",
+        elapsed);
+
+    printf(
+        "training steps    : %llu\n",
+        (unsigned long long)
+        total_steps);
+
+    printf(
+        "compute volume    : %.3f TFLOP-equivalent\n",
+        total_ops /
+        1e12);
+
+    printf(
+        "average throughput: %.2f GFLOP/s\n",
+        average_gflops);
+
+    printf(
+        "peak throughput   : %.2f GFLOP/s\n",
+        peak_throughput);
+
+    if (total_steps > 0)
+    {
+        printf(
+            "average loss     : %.6f\n",
+            total_loss /
+            total_steps);
+    }
+
+    printf(
+        "RAM allocation    : %.2f GiB\n",
+        (double)
+        allocated_ram /
+        1073741824.0);
+
+    printf(
+        "worker count      : %d\n",
+        threads);
+
+#if defined(__aarch64__)
+    printf(
+        "vector backend    : ARM NEON\n");
+#else
+    printf(
+        "vector backend    : scalar\n");
+#endif
+
+    free(
+        memory_arena);
+
+    free(
+        thread_handles);
+
+    free(
+        workers);
+
+    return 0;
+}
+EOF
+
+clang \
+-O3 \
+-ffast-math \
+-funroll-loops \
+-pthread \
+$HOME/mobile_ml_engine.c \
+-lm \
+-o $HOME/mobile_ml_engine && \
+DURATION_SEC=1200 RAM_PCT=65 $HOME/mobile_ml_engine
