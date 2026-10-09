@@ -1,24 +1,25 @@
 
 pkg install -y clang coreutils procps
 
-mkdir -p "$HOME/hacktracker_compile"
-cd "$HOME/hacktracker_compile"
+mkdir -p "$HOME/output 1"
 
-cat > run_test.sh <<'SCRIPT'
-#!/data/data/com.termux/files/usr/bin/bash
-
+bash <<'SCRIPT'
 set -u
 
-ROOT="$HOME/hacktracker_compile"
-STAMP="$(date +%Y%m%d_%H%M%S)"
-OUT="$ROOT/test_$STAMP"
-ARCHIVE="$ROOT/HackTracker_Compile_$STAMP.tar.gz"
+ROOT="$HOME/output 1"
+OUT="$(mktemp -d "$ROOT/XXXXXXXX")"
+ARCHIVE="$ROOT/$(basename "$OUT").tar.gz"
+
+SOURCE="$(mktemp "$OUT/XXXXXXXX.cpp")"
+F1="$(mktemp "$OUT/XXXXXXXX.log")"
+F2="$(mktemp "$OUT/XXXXXXXX.log")"
+F3="$(mktemp "$OUT/XXXXXXXX.log")"
+F4="$(mktemp "$OUT/XXXXXXXX.log")"
+F5="$(mktemp "$OUT/XXXXXXXX.log")"
 
 WORKERS=4
 MAX_SECONDS=12
 TEMP_LIMIT=42
-
-mkdir -p "$OUT"
 PIDS=()
 
 get_temp() {
@@ -28,7 +29,6 @@ get_temp() {
         value="$(timeout 2s termux-battery-status 2>/dev/null |
           sed -n 's/.*"temperature"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' |
           head -n 1)"
-
         if [[ -n "$value" ]]; then
             echo "$value"
             return
@@ -52,13 +52,13 @@ stop_workers() {
 
 trap stop_workers EXIT
 
-echo "===== DEVICE INFORMATION =====" > "$OUT/device.txt"
-date -u >> "$OUT/device.txt"
-getprop ro.product.model >> "$OUT/device.txt"
-getprop ro.build.version.release >> "$OUT/device.txt"
-nproc >> "$OUT/device.txt"
-
-echo "===== GENERATING C++ SOURCE ====="
+{
+    echo "DEVICE INFORMATION"
+    date -u
+    getprop ro.product.model
+    getprop ro.build.version.release
+    nproc
+} > "$F1"
 
 {
     echo '#include <cmath>'
@@ -72,40 +72,43 @@ echo "===== GENERATING C++ SOURCE ====="
         echo "  return x;"
         echo "}"
     done
-} > "$OUT/workload.cpp"
+} > "$SOURCE"
 
 TEMP="$(get_temp)"
-echo "Starting battery temperature: ${TEMP:-unavailable} C" |
-  tee "$OUT/status.log"
+
+echo "Starting temperature: ${TEMP:-unavailable} C" |
+  tee "$F2"
 
 if [[ -n "$TEMP" ]]; then
     TEMP_INT="${TEMP%%.*}"
 
     if [[ "$TEMP_INT" =~ ^[0-9]+$ ]] &&
        (( TEMP_INT >= TEMP_LIMIT )); then
-        echo "ABORTED: Phone is too warm." |
-          tee -a "$OUT/status.log"
+        echo "ABORTED: Temperature too high." |
+          tee -a "$F2"
         exit 1
     fi
 fi
 
 echo ""
-echo "===== COMPILATION STARTING ====="
-date -u '+UTC: %Y-%m-%dT%H:%M:%SZ' |
-  tee -a "$OUT/status.log"
+echo "===== STARTING ====="
 
-echo "Workers: $WORKERS" | tee -a "$OUT/status.log"
-echo "Maximum duration: $MAX_SECONDS seconds" |
-  tee -a "$OUT/status.log"
+date -u '+UTC: %Y-%m-%dT%H:%M:%SZ' |
+  tee -a "$F2"
+
+echo "Workers: $WORKERS" | tee -a "$F2"
 
 for worker in $(seq 1 "$WORKERS"); do
+
+    OBJ="$OUT/$(basename "$(mktemp "$OUT/XXXXXXXX.o")")"
+    LOG="$(mktemp "$OUT/XXXXXXXX.log")"
 
     timeout --signal=TERM --kill-after=2s \
       "${MAX_SECONDS}s" \
       clang++ -std=c++17 -O2 \
-      -c "$OUT/workload.cpp" \
-      -o "$OUT/output_$worker.o" \
-      > "$OUT/compiler_$worker.log" 2>&1 &
+      -c "$SOURCE" \
+      -o "$OBJ" \
+      > "$LOG" 2>&1 &
 
     PIDS+=("$!")
 done
@@ -115,22 +118,21 @@ for sample in $(seq 1 10); do
     NOW="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     TEMP="$(get_temp)"
 
-    echo "$NOW battery_temp=${TEMP:-unavailable}C" |
-      tee -a "$OUT/temperature.log"
+    echo "$NOW battery_temperature=${TEMP:-unavailable}C" \
+      >> "$F3"
 
     {
         echo ""
         echo "======== $NOW ========"
         top -b -n 1 2>&1 | head -n 35
-    } >> "$OUT/cpu_samples.log"
+    } >> "$F4"
 
     if [[ -n "$TEMP" ]]; then
         TEMP_INT="${TEMP%%.*}"
 
         if [[ "$TEMP_INT" =~ ^[0-9]+$ ]] &&
            (( TEMP_INT >= TEMP_LIMIT )); then
-            echo "THERMAL STOP at $NOW" |
-              tee -a "$OUT/status.log"
+            echo "THERMAL STOP at $NOW" | tee -a "$F2"
             stop_workers
             break
         fi
@@ -154,29 +156,20 @@ done
 for pid in "${PIDS[@]}"; do
     wait "$pid" 2>/dev/null
     CODE=$?
-    echo "PID=$pid EXIT=$CODE" >> "$OUT/results.log"
+    echo "PID=$pid EXIT=$CODE" >> "$F5"
 done
 
-echo "Compilation finished:" | tee -a "$OUT/status.log"
 date -u '+UTC: %Y-%m-%dT%H:%M:%SZ' |
-  tee -a "$OUT/status.log"
+  tee -a "$F2"
 
-tar -czf "$ARCHIVE" -C "$ROOT" "test_$STAMP"
-
-echo ""
-echo "===== TEST COMPLETE ====="
-echo "Log archive: $ARCHIVE"
+tar -czf "$ARCHIVE" -C "$ROOT" "$(basename "$OUT")"
 
 if [[ -d "$HOME/storage/downloads" ]]; then
     cp "$ARCHIVE" "$HOME/storage/downloads/"
-    echo "Copied to Android Downloads."
-else
-    echo "Run termux-setup-storage to enable Downloads access."
 fi
 
 echo ""
-echo "Please upload the generated .tar.gz file."
+echo "===== COMPLETE ====="
+echo "Saved: $ARCHIVE"
+echo "Upload the .tar.gz file."
 SCRIPT
-
-chmod +x run_test.sh
-./run_test.sh
