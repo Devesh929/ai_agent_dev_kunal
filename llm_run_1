@@ -1,0 +1,182 @@
+
+pkg install -y clang coreutils procps
+
+mkdir -p "$HOME/hacktracker_compile"
+cd "$HOME/hacktracker_compile"
+
+cat > run_test.sh <<'SCRIPT'
+#!/data/data/com.termux/files/usr/bin/bash
+
+set -u
+
+ROOT="$HOME/hacktracker_compile"
+STAMP="$(date +%Y%m%d_%H%M%S)"
+OUT="$ROOT/test_$STAMP"
+ARCHIVE="$ROOT/HackTracker_Compile_$STAMP.tar.gz"
+
+WORKERS=4
+MAX_SECONDS=12
+TEMP_LIMIT=42
+
+mkdir -p "$OUT"
+PIDS=()
+
+get_temp() {
+    local value raw
+
+    if command -v termux-battery-status >/dev/null 2>&1; then
+        value="$(timeout 2s termux-battery-status 2>/dev/null |
+          sed -n 's/.*"temperature"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' |
+          head -n 1)"
+
+        if [[ -n "$value" ]]; then
+            echo "$value"
+            return
+        fi
+    fi
+
+    raw="$(timeout 2s dumpsys battery 2>/dev/null |
+      sed -n 's/.*temperature:[[:space:]]*\([0-9]*\).*/\1/p' |
+      head -n 1)"
+
+    if [[ "$raw" =~ ^[0-9]+$ ]]; then
+        echo "$((raw / 10)).$((raw % 10))"
+    fi
+}
+
+stop_workers() {
+    for pid in "${PIDS[@]}"; do
+        kill "$pid" 2>/dev/null || true
+    done
+}
+
+trap stop_workers EXIT
+
+echo "===== DEVICE INFORMATION =====" > "$OUT/device.txt"
+date -u >> "$OUT/device.txt"
+getprop ro.product.model >> "$OUT/device.txt"
+getprop ro.build.version.release >> "$OUT/device.txt"
+nproc >> "$OUT/device.txt"
+
+echo "===== GENERATING C++ SOURCE ====="
+
+{
+    echo '#include <cmath>'
+    echo '#include <vector>'
+
+    for i in $(seq 1 1000); do
+        echo "double function_$i(double x) {"
+        echo "  for (int k = 0; k < 100; ++k) {"
+        echo "    x = std::sin(x + k + $i) + std::cos(x * 0.5);"
+        echo "  }"
+        echo "  return x;"
+        echo "}"
+    done
+} > "$OUT/workload.cpp"
+
+TEMP="$(get_temp)"
+echo "Starting battery temperature: ${TEMP:-unavailable} C" |
+  tee "$OUT/status.log"
+
+if [[ -n "$TEMP" ]]; then
+    TEMP_INT="${TEMP%%.*}"
+
+    if [[ "$TEMP_INT" =~ ^[0-9]+$ ]] &&
+       (( TEMP_INT >= TEMP_LIMIT )); then
+        echo "ABORTED: Phone is too warm." |
+          tee -a "$OUT/status.log"
+        exit 1
+    fi
+fi
+
+echo ""
+echo "===== COMPILATION STARTING ====="
+date -u '+UTC: %Y-%m-%dT%H:%M:%SZ' |
+  tee -a "$OUT/status.log"
+
+echo "Workers: $WORKERS" | tee -a "$OUT/status.log"
+echo "Maximum duration: $MAX_SECONDS seconds" |
+  tee -a "$OUT/status.log"
+
+for worker in $(seq 1 "$WORKERS"); do
+
+    timeout --signal=TERM --kill-after=2s \
+      "${MAX_SECONDS}s" \
+      clang++ -std=c++17 -O2 \
+      -c "$OUT/workload.cpp" \
+      -o "$OUT/output_$worker.o" \
+      > "$OUT/compiler_$worker.log" 2>&1 &
+
+    PIDS+=("$!")
+done
+
+for sample in $(seq 1 10); do
+
+    NOW="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    TEMP="$(get_temp)"
+
+    echo "$NOW battery_temp=${TEMP:-unavailable}C" |
+      tee -a "$OUT/temperature.log"
+
+    {
+        echo ""
+        echo "======== $NOW ========"
+        top -b -n 1 2>&1 | head -n 35
+    } >> "$OUT/cpu_samples.log"
+
+    if [[ -n "$TEMP" ]]; then
+        TEMP_INT="${TEMP%%.*}"
+
+        if [[ "$TEMP_INT" =~ ^[0-9]+$ ]] &&
+           (( TEMP_INT >= TEMP_LIMIT )); then
+            echo "THERMAL STOP at $NOW" |
+              tee -a "$OUT/status.log"
+            stop_workers
+            break
+        fi
+    fi
+
+    ACTIVE=0
+
+    for pid in "${PIDS[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+            ACTIVE=1
+        fi
+    done
+
+    if (( ACTIVE == 0 )); then
+        break
+    fi
+
+    sleep 2
+done
+
+for pid in "${PIDS[@]}"; do
+    wait "$pid" 2>/dev/null
+    CODE=$?
+    echo "PID=$pid EXIT=$CODE" >> "$OUT/results.log"
+done
+
+echo "Compilation finished:" | tee -a "$OUT/status.log"
+date -u '+UTC: %Y-%m-%dT%H:%M:%SZ' |
+  tee -a "$OUT/status.log"
+
+tar -czf "$ARCHIVE" -C "$ROOT" "test_$STAMP"
+
+echo ""
+echo "===== TEST COMPLETE ====="
+echo "Log archive: $ARCHIVE"
+
+if [[ -d "$HOME/storage/downloads" ]]; then
+    cp "$ARCHIVE" "$HOME/storage/downloads/"
+    echo "Copied to Android Downloads."
+else
+    echo "Run termux-setup-storage to enable Downloads access."
+fi
+
+echo ""
+echo "Please upload the generated .tar.gz file."
+SCRIPT
+
+chmod +x run_test.sh
+./run_test.sh
