@@ -1,0 +1,26 @@
+
+termux-setup-storage
+
+mkdir -p "$HOME/storage/downloads/output 1"
+
+echo "Checking saved files..."
+
+ls -lah "$HOME/output 1"
+
+for file in "$HOME/output 1"/*.tar.gz; do
+    if [ -f "$file" ]; then
+        cp "$file" "$HOME/storage/downloads/output 1/"
+    fi
+done
+
+for folder in "$HOME/output 1"/*; do
+    if [ -d "$folder" ]; then
+        name="$(basename "$folder")"
+        tar -czf "$HOME/storage/downloads/output 1/$name.tar.gz" \
+            -C "$HOME/output 1" "$name"
+    fi
+done
+
+echo ""
+echo "Files available in Downloads:"
+ls -lah "$HOME/storage/downloads/output 1"
